@@ -1,0 +1,1487 @@
+3346                                                                                              IEEE TRANSACTIONS ON SIGNAL PROCESSING, VOL. 73, 2025
+
+
+
+
+       Achievable Rate Maximization in MIMO-BICM
+           Systems: A Unified Transceiver Design
+                Jie Yang , Wanchen Hu , Yi Jiang , Member, IEEE, Shuangyang Li , Member, IEEE,
+                                         and Xin Wang , Fellow, IEEE
+
+
+   Abstract—Transceiver designs for multiple-input multiple-                       BICM technology is introduced in [2]. Furthermore, multiple-
+output (MIMO) systems have been extensively studied in the                         input multiple-output (MIMO) technology can significantly in-
+past decades. However, in the context of finite constellation                      crease the system capacity. The BICM is extended to MIMO
+inputs, existing transceiver designs do not guarantee optimal
+performance across all SNR ranges or varying code rates. In this                   systems, termed as MIMO-BICM [3], [4], which has been a
+paper, we propose a novel maximum achievable rate transceiver                      pivotal technology in high-speed packet access (HSPA), IEEE
+(MART) design for bit-interleaved coded modulation in MIMO                         802.11a/g/n standards, Long Term Evolution (LTE), the fifth
+(MIMO-BICM) systems. Our proposed MART scheme combines                             generation new radio (5G NR), and 5G-Advanced standards. It
+channel matrix decomposition and decision feedback equalization                    is anticipated to be integral to the standards for the forthcoming
+(DFE), decomposing the MIMO channel into multiple parallel
+subchannels. We establish a tight lower bound for achievable                       sixth-generation (6G) systems [5].
+rates in MIMO-BICM, based on which we transform the sophis-                           Precoding techniques for MIMO systems have been exten-
+ticated problem to the optimization of the output signal-to-noise                  sively studied to optimize the system capacity and achievable
+ratios (SNRs) of subchannels. We consider the achievable rate                      rate. It is well known that combining the water filling (WF)
+maximization under both zero-forcing (ZF) and minimum mean-                        and singular value decomposition (SVD) can achieve the chan-
+square error (MMSE) criteria and provide a unified solution
+framework for both two problems. To simplify the optimization                      nel capacity [6]. Due to the significantly different SNRs of
+process, we further propose an alternative near-optimal scheme                     the subchannels, bit allocation [7] is then required to match
+for both ZF and MMSE problems. Numerical results show the                          the sub-channel capacity to the specified bit error rate (BER)
+optimality of the proposed MART scheme across all SNR ranges,                      performance, which not only increases the complexity of en-
+demonstrating its potential in practical MIMO-BICM systems.                        coding/decoding, but is also inherently capacity-losing. Using
+   Index Terms—MIMO-BICM, optimal transceiver design, ma-                          the same constellation for transmission in all sub-channels is
+trix decomposition, ZF, MMSE.                                                      the practical choice, and it has been adopted by the European
+                                                                                   standard HIPERLAN/2, the U.S. standard IEEE 802.11 a/g/n
+                            I. INTRODUCTION                                        and 5G system. For maximizing the achievable rate with fi-
+                                                                                   nite constellation inputs, gradient descent-based methods are
+
+M       ODERN wireless communication systems extensively
+        employ bit-interleaved coded modulation (BICM) [1]
+technique due to its versatility in integrating forward error cor-
+                                                                                   proposed to determine the optimal precoding matrix [8], [9],
+                                                                                   [10]. Such designs necessitate optimal receivers to reap the high
+                                                                                   performance, such as maximum likelihood (ML) or maximum
+rection (FEC) coding and modulation. A systematic tutorial to                      a posterior (MAP) reception. Then, the precoding optimization
+                                                                                   and optimal reception are both unaffordable due to the high
+                                                                                   computational complexity, particularly in large-scale MIMO
+  Received 6 December 2024; revised 17 May 2025 and 13 July 2025;                  systems, making their applications impractical.
+accepted 21 July 2025. Date of publication 29 July 2025; date of current
+version 9 September 2025. The work was supported in part by the National              To achieve high achievable rate and high reliability of the sys-
+Natural Science Foundation of China under Grant 62231010, and in part by           tem, yet maintaining a manageable complexity, a joint design
+the European Union’s Horizon 2020 Research and Innovation Program under            of the transmitter (precoding) and receiver (equalization), i.e.,
+MSCA Grant 101105732 – DDComRad. The associate editor coordinating
+the review of this article and approving it for publication was Foad Sohrabi.      the transceiver design, would be required [11], [12]. Palomar et
+(Corresponding author: Xin Wang.)                                                  al. proposed a unified framework for linear transceiver designs
+  Jie Yang, Wanchen Hu, and Xin Wang are with the Key Laboratory                   by leveraging Schur convex/concave properties of different ob-
+for Information Science of Electromagnetic Waves (MoE), College of
+Future Information Technology, Fudan University, Shanghai 200438,                  jective functions [13], such as minimizing the determinant of
+China (e-mail: yangjie23@m.fudan.edu.cn; huwc23@m.fudan.edu.cn;                    the mean square error (MSE) matrix (Schur concave) and min-
+xwang11@fudan.edu.cn).                                                             imizing max MSE [14] (Schur convex). Jiang et al. advanced
+  Yi Jiang, deceased, was with the Key Laboratory for Information Science
+of Electromagnetic Waves (MoE), School of Information Science and Tech-            this framework with geometric mean decomposition (GMD)
+nology, Fudan University, Shanghai 200438, China.                                  and uniform channel decomposition (UCD) in [15], [16], com-
+  Shuangyang Li is with the Communications and Information Theory Group            bining linear precoding with decision feedback equalization
+(CommIT), Technische Universität Berlin, 10587 Berlin, Germany (e-mail:
+shuangyang.li@tu-berlin.de).                                                       (DFE) to improve BER performance. It has been proved that
+  Digital Object Identifier 10.1109/TSP.2025.3592835                               nonlinear GMD-based transceivers provide the optimal solution
+
+
+   1053-587X © 2025 IEEE. All rights reserved, including rights for text and data mining, and training of artificial intelligence and similar technologies.
+Personal use is permitted, but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index.html for more information.
+
+
+         Authorized licensed use limited to: FUDAN UNIVERSITY. Downloaded on March 25,2026 at 07:15:03 UTC from IEEE Xplore. Restrictions apply.
+YANG et al.: ACHIEVABLE RATE MAXIMIZATION IN MIMO-BICM SYSTEMS                                                                                    3347
+
+
+
+for Schur-convex functions and linear SVD-based transceivers                      Space-Time (VBLAST) scheme, to decompose the MIMO
+provide the optimal solution for Schur-concave objective func-                    channel into multiple parallel subchannels. The output
+tions [17]. Recent researches expanded on these methodolo-                        SNR of each subchannel is optimized to maximize the
+gies, discussing different applications across various scenarios                  achievable rate. Specifically, we consider two receiver
+[18], [19]. However, Schur-concave/convex functions do not                        types: zero-forcing (ZF)-VBLAST and minimum mean
+encompass all objectives. For example, achievable rate opti-                      square error (MMSE)-VBLAST. In both ZF and MMSE
+mization with finite constellation inputs is neither convex nor                   senses, after obtaining the optimized output SNRs, we ap-
+concave, rendering the above framework insufficient for finding                   ply the generalized triangular decomposition (GTD) [25]
+optimal solutions.                                                                to achieve the corresponding channel decomposition.
+   Unlike conventional MIMO systems, where designs typically                   • The output SNR optimization problems in both ZF and
+assume Gaussian inputs and focus on metrics such as power or                      MMSE senses are constrained by multiplicative ma-
+capacity optimization, the precoder design for MIMO-BICM                          jorization, exhibiting strong non-convexity. To tackle this
+systems requires the joint consideration of both the channel                      challenge, we decompose this problem into the recursive
+condition and the bit-level modulation. Recently, the authors in                  problem starting with the strong subchannels and consid-
+[20] demonstrated that conventional precoding strategies devel-                   ering the optimization of the weak subchannels in turn.
+oped for MIMO systems are not directly applicable to MIMO-                        And we prove the optimality of this optimization approach.
+BICM systems. Indeed, despite extensive research on MIMO                          To further simplify the optimization process, we propose
+precoding, efficient designs tailored to the unique character-                    a low-complexity method without the recursive optimiza-
+istics of MIMO-BICM remain underexplored, necessitating a                         tion process, which has the near-optimal achievable rate
+novel solution that accounts for the characteristics of BICM.                     performance.
+   Research on transceivers for MIMO-BICM remains rela-                        • The results of MART reveal that during the recursive
+tively scant. Among the classic studies in this field, authors                    optimization, for a subset of stronger subchannels, keep-
+in [21] presented an integration of BICM with SVD, which                          ing their output SNRs equal can improve the overall
+demonstrates full diversity under specific code rates and spatial                 achievable rate performance, however, as the optimization
+stream criteria. [22] introduced a partially algebraic transceiver                proceeds (weaker subchannels are considered for opti-
+approach to achieve full diversity. It has been proven that the                   mization), the performance of the stronger subchannels
+optimal precoding strategy for maximizing achievable rates                        should not be significantly weakened to enhance weaker
+with finite constellation inputs is SNR-dependent, with different                 subchannels. Thus in the high SNR regime, i.e., when
+schemes preferred across SNR regimes [23], [24]. Specifically,                    the overall channel conditions are good, MART results in
+SVD-based transceivers achieve superior achievable rate and                       GMD/UCD; in the low SNR regime (the channel condi-
+BER performance in low-SNR regions (or low code rate),                            tions are overall poor), MART results in SVD. The insights
+whereas GMD/UCD-based transceivers perform optimally in                           gained from MART offer a theoretical explanation for the
+high-SNR regions (or high code rate). In other words, for a                       performance variations observed between GMD/UCD and
+given SNR (neither high nor low SNR), no unified conclusion                       SVD under varying SNR regimes [23]. More importantly,
+has been reached on the specific precoding scheme, leaving                        MART provides a clear explanation of the ambiguity in
+it an open question for further investigation. This intriguing                    the middle of high SNRs and low SNRs.
+phenomenon motivates us to explore a unified transceiver de-                The remainder of this paper is structured as follows. Section II
+sign for MIMO-BICM systems, aiming to achieve the capacity-                 presents the MIMO-BICM system model and provides a brief
+approaching performance across the entire SNR range.                        overview of DFE reception, GTD, and majorization theory.
+   In this paper, we propose a unified maximum achievable                   Section III derives the low bound of the achievable rate and
+rate transceiver (MART) design for MIMO-BICM systems. Our                   formulates the problem of maximizing the achievable rate for
+proposed MART is specifically designed for finite constellation             MIMO-BICM systems under both ZF and MMSE criteria. In
+inputs, resulting in consistently optimal performance across                Sections IV and V, we propose MART-ZF and MART-MMSE
+any code rate or SNR regime, providing valuable insights for                designs aimed at maximizing the achievable rate for MIMO-
+practical transceiver implementations.                                      BICM systems. We also analyze the complexity of the proposed
+   Our main contributions can be summarized as follows.                     design. Numerical results are presented in Section VI, followed
+   • We derive a theoretical lower bound for the achievable rate            by the conclusion in Section VII.
+      of MIMO-BICM systems and prove the asymptotically                        Notations: Boldface uppercase (lowercase) letters denote
+      equivalence of the lower bound. The lower bound only                  matrices, e.g., A, (column vectors, e.g., a), and italics denote
+      depends on the modulation scheme and the output SNR                   scalars, e.g., a. The (i, j)-th entry of A is denoted by Ai,j or
+      of each bit channel. Hence, we transform the sophisticated            [A]i,j . The columns of an M × N matrix A are denoted by
+      problem to the optimization of the output SNR of sub-                 a1 , a2 , · · · , aN ; CM ×N and RM ×N denote the sets of M × N
+      channels. Numerical results demonstrate that maximizing               complex and real matrices, respectively. The superscript (·)H
+      this lower bound enables the achievable rate to closely               stands for the conjugate transport operator; diag{A} stands for
+      approach the channel capacity of MIMO-BICM systems.                   a vector collecting by the diagonal entries of A. tr(A) repre-
+   • The proposed MART employs linear precoding combined                    sents the trace of A. IN represents a N × N identity matrix.
+      with DFE reception, e.g., the Vertical Bell Labs Layered              The term E{·} denotes the statistical expectation operation;
+
+        Authorized licensed use limited to: FUDAN UNIVERSITY. Downloaded on March 25,2026 at 07:15:03 UTC from IEEE Xplore. Restrictions apply.
+3348                                                                                            IEEE TRANSACTIONS ON SIGNAL PROCESSING, VOL. 73, 2025
+
+
+
+
+       Fig. 1.    The brief transmitter structure of MIMO-BICM systems.
+
+
+
+ln stands for the natural-based logarithm,  ·  stands for the
+l2 -norm. {·} and {·} represent the In-phase (or real) and                      Fig. 2.    Scheme of a MIMO communication system with DFE receiver.
+Quadrature (or imaginary) parts of data, respectively.
+                                                                                of QH being the ZF nulling vector. In this paper, to facilitate the
+                 II. SYSTEM MODEL AND PRELIMINARIES
+                                                                                theoretical analysis, we ignore the error propagation effect, i.e.,
+A. The MIMO-BICM System Model                                                   we assume that the quantizer perfectly recovers the information
+   In a MIMO-BICM system, as depicted in Fig. 1, the infor-                     sequence. Then the MIMO channel can be decomposed into Ns
+mation bits ak , k = 1, · · · are encoded using the FEC code into               parallel scalar subchannels:
+bn , n = 1, 2, · · ·, which are then interleaved into bits cn , n =                             ŷi = Ri,i xi + ẑi ,           i = 1, 2, · · · , Ns .       (6)
+1, 2, · · ·. Passing through the modulator, the interleaved bits
+are grouped into subsequences of K bits each and multiplexed                    Hence, the output SNR of each layer is
+into Ns data streams x ∈ CNs ×1 , of which each entry is taken                                                   2
+                                                                                                                Ri,i
+from an M -quadrature amplitude modulation (QAM) constel-                                            ρi =            ,    i = 1, 2, · · · , Ns .             (7)
+                                                                                                                 α
+lation denoted by the set M with cardinality M = M =
+2q . Without loss of generality, we assume that K = qNs and
+                                                                                C. MMSE-VBLAST
+E(xxH ) = INs . The transmitted symbol vector s is obtained by
+transforming the Ns -dimensional information symbols vector x                      The combination of the MMSE criteria and VBLAST is
+using a precoder F :                                                            refereed to the MMSE-VBLAST. We consider the QR decom-
+                                                                                position of the augmented matrix
+                                   s = Fx,                                (1)                                       u
+                                                                                                    HF                Qa
+where F ∈ CNt ×Ns and tr(FFH ) ≤ Pt with Pt denoting the                                    Ha = √         = Qa Ra       Ra ,      (8)
+                                                                                                    αINs              Qla
+total transmitting power. Then, the received vector is
+                                                                                where Ha ∈ C(Nr +Ns )×Ns and α is defined in (3). Note that
+                               y = HFx + z,                               (2)   Qua is not unitary, thus HF = Qua Ra is not actually a “QR”
+where H ∈ CNr ×Nt is the channel matrix with Nr receive                         decomposition. Let qa,i be the i-th column of Qua and ra,i the
+antennas and Nt transmit antennas, and z is the zero-mean cir-                  i-th diagonal entry of Ra . The MMSE nulling vector of i-th
+cularly symmetric white Gaussian noise vector with E(zzH ) =                    layer is given by [16]
+σz2 INr . We define the input SNR as                                                                     −1
+                                                                                                   wi = ra,i qa,i ,         i = 1, 2, · · · , Ns ,           (9)
+                                E(s s)H
+                                        1
+                             ρ=    2
+                                        .                                (3)   which constructs the equalization matrix W. It follows that
+                                  σz    α
+To recover the transmitted signal, VBLAST [26] can be adopted                                        ŷ = WH y = WH HFx + ẑ,                               (10)
+to implement the DFE. In the following sections, we briefly                     where ẑ = WH z. We define R  WH HF. Note that R is not
+introduce VBLAST in conjunction with ZF (ZF-VBLAST) and                         upper triangular as the MMSE criterion allows for interference
+MMSE (MMSE-VBLAST) approaches.                                                  across the data streams. Ignoring the error propagation, we can
+                                                                                treat the MIMO channel as Ns parallel subchannels:
+B. ZF-VBLAST
+                                                                                              ŷi = Ri,i xi + Ii + ẑi ,           i = 1, 2, · · · , Ns ,   (11)
+   The conventional VBLAST decoder utilizes the decision
+feedback to improve the throughput of MIMO systems, as de-                      with Ii representing the interference. And the output SNR of
+picted in Fig. 2. Perform the QR decomposition on the effective                 i-th layer is [16]
+channel in (2), i.e., HF = QR, where Q ∈ CNr ×Ns is a semi-                                              [Ra ]2i,i
+unitary matrix and R ∈ CNs ×Ns is an upper triangular matrix.                                    ρi =              − 1,         i = 1, 2 · · · , Ns .       (12)
+                                                                                                           α
+Then (2) can be re-expressed as
+                               y = QRx + z.                               (4)   D. Majorization Theory and GTD Theorem
+Employing QH as the equalizer, we have                                            Definition 1: We denote an N -dimensional positive vector
+                                                                                a ∈ RN ×1 is multiplicatively majorized by b ∈ RN ×1 as a ≺×
+                           ŷ = QH y = Rx + ẑ,                           (5)   b, if
+where ẑ = QH z remains a zero-mean white Gaussian noise and                         
+                                                                                     N             
+                                                                                                   N              
+                                                                                                                  k             
+                                                                                                                                k
+the transmitted symbol x can be recovered using the VBLAST,                                 an =         bn ,            an ≤         bn ,   1 ≤ k < N,     (13)
+which is essentially the ZF-VBLAST, with each column vector                         n=1            n=1            i=1           n=1
+
+          Authorized licensed use limited to: FUDAN UNIVERSITY. Downloaded on March 25,2026 at 07:15:03 UTC from IEEE Xplore. Restrictions apply.
+YANG et al.: ACHIEVABLE RATE MAXIMIZATION IN MIMO-BICM SYSTEMS                                                                                                3349
+
+
+
+where elements in a and b are in the descending order, i.e.,                 the channel capacity with Gaussian inputs, i.e., log2 det(I +
+a 1 ≥ · · · ≥ a n , b1 ≥ · · · ≥ bn .                                        α−1 HFFH HH ), but it affects the achievable rate with finite
+   Let H ∈ CNr ×Nt be a matrix with singular values vec-                     constellation inputs. This is because for the effective channel
+                                                                                            1
+tor Υ = [σ1 , σ2 , · · · , σNs ]T (σ1 ≥ σ2 ≥ · · · ≥ σNs > 0). Then          HF = HVΦ 2 ΩH = QR, where different Ω yields different
+there is Theorem 1 as follows.                                               R in (4) (also Ra in (8)), leading to different output SNRs in (7)
+   Theorem 1 (GTD Theorem): There exists an upper trian-                     and (12). In the following, we derive the relationship between
+gular matrix R ∈ RNr ×Nt , along with semi-unitary matrices                  output SNR and achievable rate. Specifically, we analyze the
+Q ∈ CNr ×Nt and P ∈ CNt ×Nt , such that H = QRPH i.e.,
+                                                                                                                    1
+                                                                             optimal values of Ri,i = [QH HVΦ 2 ΩH ]i,i that maximize the
+R = QH HP, if and only if the diagonal entries of R satisfy                  achievable rate (15) for the ZF and MMSE cases in Sections IV
+diag{R} ≺× Υ.                                                                and V, respectively. Once the optimal Ri,i values are identified,
+      Proof: See [25].                                                       the corresponding Ω and Q can be obtained using the GTD
+   In fact, many of the well-known channel decompositions can                theorem.
+be regarded as special cases of the GTD. For instance, the SVD                  We now do the derivation in the ZF sense, and the derivation
+is a specific case where the diagonal entries of matrix R are the            in the MMSE sense can be obtained similarly. Define
+most polarized, i.e., Ri,i = σi , 1 ≤ i ≤ Ns . Another example of
+                                                                                                                               1
+GTD is the GMD [15], which ensures that all diagonal entries                                                     Λ  ΣΦ 2 .                                   (17)
+of R are identical and given by
+                      N          N1s                                       Perform QR decomposition for the effective channel such that
+                         s
+                                                                             HF = QR (HF = Qua Ra in the MMSE sense), where the
+             Ri,i =           σk       , k = 1, 2, · · · , Ns . (14)
+                                                                             diagonal entries of R affect the output SNRs [cf. (7)]. Accord-
+                     k=1
+                                                                             ing to the Theorem 1, R and Ra should satisfy diag{R} ≺×
+Here Ri,i is the geometric mean value (GMV) of singular values               diag{Λ} and diag{Ra } ≺× diag{Λa }, respectively, that is
+of H. Channel bidiagonalization (CBD) [27] and its extension
+parallel CBD [28] are also special cases of GTD. As revealed                     
+                                                                                 Ns              
+                                                                                                 Ns             
+                                                                                                                k              
+                                                                                                                               k
+in [23], for the MIMO-BICM system with finite constella-                               Ri,i =          λi ,           Ri,i ≤         λi ,     1 ≤ k < Ns ,
+tion inputs, the SVD-based transceiver performs optimally in                     i=1             i=1            i=1            i=1
+low-SNR (or low data rate) regimes, while the GMD-based                                                                                                      (18a)
+transceiver excels in high-SNR (or high data rate) regimes.                   
+                                                                              Ns                 
+                                                                                                 Ns              
+                                                                                                                 k                   
+                                                                                                                                     k
+The performance distinction of the GMD and the SVD in dif-                          [Ra ]i,i =         λa,i ,          [Ra ]i,i ≤           λa,i ,   1 ≤ k < Ns ,
+ferent SNR regimes motivates us to investigate a transceiver                  i=1                i=1             i=1                 i=1
+that is optimal across all SNR range. Moreover, the design of                                                                                                (18b)
+the transceiver for the middle SNR remains unknown, which
+motivates us to further investigate the transceiver design for the           where
+                                                                             √       {λa,i }N
+                                                                                            i=1 are the singular values of Ha and λa,i =
+                                                                                              s
+
+
+entire range of SNRs. To this end, we establish the relationship               λi + α, i = 1, 2, · · · , Ns . Additionally, since R is real-
+between the output SNR and achievable rate, combing the GTD                  valued, the in-phase and quadrature components of the effective
+and ZF/MMSE-VBLAST to unify the transceiver design. In the                   received data, i.e., yI = {ỹ} and yQ = {ỹ}, are treated as
+following section, we formulate the problem of maximizing the                decoupled. We then focus on describing the computation of the
+achievable rate in both the ZF and MMSE senses.                              soft information for bit cn , n = 1, · · · , N2s q , associated with the
+                                                                             in-phase component yI . A similar process can be performed on
+                  III. PROBLEM FORMULATION                                   the quadrature component yQ to extract the soft information
+                                                                             for the remaining N2s q bits. Consequently, the√transmit symbols
+   This section employs an information-theoretic approach to
+                                                                             can be effectively represented as a set of M -pulse ampli-
+analyze the achievable rate performance of the MIMO-BICM
+                                                                             tude modulation (PAM) signals xIi . For notational convenience,
+system with finite constellation inputs. The achievable rate of a                                              I
+MIMO-BICM system is evaluated using the generalized mutual                   √ omit the superscript of xi in the following. The set of
+                                                                             we
+                                                                               M -PAM is defined as
+information (GMI) and given by [2], [20], [23], [29]
+        K 
+                                                                                           3       √        √              √
+   R=          1 − Ecn ,y,H log2 1 + e(1−2cn )Ln                ,    (15)      X=                  {− M + 1, − M + 3, · · · , M − 1}.
+                                                                                          2(M − 1)
+        n=1
+                                                                                                                                  (19)
+where Ln denotes the log-likelihood ratio (LLR) of bit cn .
+Then, we focus on the optimization of LLR Ln for maximizing                                                               √
+                                                                                We define Xjb as the set of                  M -PAM symbols, for
+(15), which could be effected by different transceiver designs.
+                                                                             which the j-th bit under the mapping rule has the label b ∈
+  Denote the SVD of H as H = UΣVH . We adopt the
+                                                                             {0, 1}. To illustrate, we consider the 4-PAM constellation
+precoder
+                                                                             { √−310
+                                                                                     , √−1
+                                                                                         10
+                                                                                            , √110 , √310 }, where each symbol corresponds to the
+                                      1
+                           F = VΦ 2 ΩH ,                             (16)    bit group (11), (10), (00), (01), respectively. Then we have
+                                                                             X11 = { √−3     , √−1  }, X10 = { √110 , √310 }, X21 = { √−3  , √310 } and
+where Φ is the power allocation matrix and Ω is a uni-                                    10
+                                                                                         −1
+                                                                                                 10                                     10
+tary matrix, i.e., ΩH Ω = I. Note that Φ does not affect                     X2 = { √10 , √10 }.
+                                                                                0                1
+
+
+
+         Authorized licensed use limited to: FUDAN UNIVERSITY. Downloaded on March 25,2026 at 07:15:03 UTC from IEEE Xplore. Restrictions apply.
+3350                                                                                       IEEE TRANSACTIONS ON SIGNAL PROCESSING, VOL. 73, 2025
+
+
+
+   Given the effective channel R, the LLR of ci,j (the j-th bit                                    
+                                                                                                   Ns           Ns  2 
+                                                                                                                   λ      i
+in symbol xi ) is computed using the log-max approximation,                               s.t.           ρi =                       ,
+                                                                                                                          α
+given by [30]:                                                                                     i=1          i=1
+                                                                                                   k           k             
+                              −ŷi −Ri,i xi 2                                                                           λ2i
+             maxxi ∈Xj1 exp {        σz2        }                                                        ρi ≤                       ,   1 ≤ k < Ns ,
+   Li,j ≈ ln                                                                                       i=1          i=1
+                                                                                                                          α
+                              −ŷi −Ri,i xi 2
+             maxxi ∈Xj0 exp {                   }
+                                     σz2
+                                                                             where λi , i = 1, 2, · · · , Ns are the diagonal entries of Λ [cf.
+                                                                              (17)] and constraints are derived based on (7) and (18a).
+        = ρi        min ỹi − xi 2 − min1 ỹi − xi 2           ,   (20)
+                 xi ∈Xj0                  xi ∈Xj                                In MMSE sense, the output SNRs relate to the diagonal
+                                                                              entries in Ra and the noise variance [cf. (8)]. Hence, the max-
+               R2        R2                                                   imization of the achievable rate is
+where ρi  σi,i   2 =
+                        i,i
+                       α is the output SNR of the i-th layer,
+                  z
+                                                                                Problem 2 (In MMSE sense):
+and ỹi = Rŷi,i
+              i
+                 . Here, Li,j is exactly influenced by the out-
+                                                                                            Ns 
+                                                                                                       
+put SNR of each data stream and the specific noise value
+                                                                                                    log2 1 + e−ρi ·a
+                                                                                                                     2
+
+{minxi ∈Xj0 ỹi − xi 2 − minxi ∈Xj1 ỹi − xi 2 }. Actually, the                min
+                                                                                    ρi
+                                                                                            i=1
+transmitter can obtain the noise variance σz2 by channel mea-                                                   Ns  2               
+surements [31], but cannot access the specific noise values.                                
+                                                                                            Ns                     λ          i
+                                                                                   s.t.           (1 + ρi ) =                      +1 ,
+Therefore, a refined metric for reducing sensitivity to noise                                                              α
+                                                                                            i=1                 i=1
+perturbations is preferred. To this end, we derive a lower bound
+                                                                                            k                  k             
+for (15), as presented in Theorem 2 below.                                                                                λ2i
+                                                                                                  (1 + ρi ) ≤                 +1 ,          1 ≤ k < Ns ,
+   Theorem 2: Let d2min = (M6−1) represent the minimum Eu-                                  i=1                 i=1
+                                                                                                                          α
+clidean distance of the constellation [cf. (19)], and define a2              where constraints are derived based on (12) and (18b).
+d2min q
+   8 . Given the effective channel R, the achievable rate of the                Once the optimal output SNRs {ρ∗i }Ni=1 are derived, we can
+                                                                                                                      s
+
+MIMO-BICM system is lower bounded by                                          obtain the desired diagonal entries
+             q                                                                                 
+          Ns 
+                                                                                     Ri,i = ± ρ∗i α, i = 1, 2, · · · , Ns ,          (23a)
+                       1 − Eci,j ,y log2 1 + e−ρi ·a
+                                                     2
+   RL =                                                            .   (21)                      
+          i=1 j=1                                                                  [Ra ]i,i = ± (ρ∗i + 1)α, i = 1, 2, · · · , Ns .    (23b)
+This lower bound is asymptotically equivalent to (15) in both                 Note that the output SNRs depend on the square of the diagonal
+the low and high SNR regimes, i.e., as ρi → 0 and ρi → ∞.                     entries in R and Ra [cf. (7) and (12)]. Therefore, we set Ri,i
+     Proof: See Appendix A.                                                   and [Ra ]i,i to be positive for simplicity without impacting
+   Further, the expectation in (21) can generally be approxi-                 the system performance. Then we apply the GTD Theorem to
+mated using Monte Carlo trials. Hence,                                        achieve the corresponding optimal channel decomposition, thus
+                                                     
+            Ns  q
+                           1 
+                              m                                              obtaining the optimal MART-ZF and MART-MMSE schemes.
+                                              −ρi ·a2
+     RL ≈              1−          log2 1 + e                                    We next derive the optimal channel decomposition from solv-
+             i=1 j=1
+                          m                                                   ing Problem 1, and elucidate how the solution to Problem 1
+                                    k=1
+                        m Ns                                                can facilitate addressing Problem 2, thereby providing a unified
+                      q 
+                                     log2 1 + e−ρi ·a
+                                                      2
+          =K −                                             .           (22)   framework for transceiver design.
+                     m
+                         k=1 i=1
+
+We then aim to maximize the lower bound RL in (22), which                                 IV. TRANSCEIVER DESIGN IN ZF SENSE
+helps maximize the achievable rate in (15). Note that RL is                     In this section, we present the transceiver design in ZF
+affected by the output SNR ρi , as well as by a2 that depends                 sense. Additionally, we propose a low-complexity solution that
+on the modulation order. Here, a2 is a constant, as data packets              achieves near-optimal performance.
+are typically transmitted under a given modulation and coding
+scheme. Given the input SNR ρ and the channel matrix H, the
+                                                                              A. MART-ZF
+output SNRs {ρi }N  i=1 depend on the diagonal entries in R in (7)
+                      s
+                                                                                                                                                  1
+and Ra in (12), which is actually the optimization result of Ω in                The precoder in (16) is modified as F = VΦ 2 ΩH  zf , with
+(16). In this paper, we derive the solution of (22) within both the           the unitary matrix Ωzf ∈ CNs ×Ns to be determined. Then, the
+ZF-VBLAST and MMSE-VBLAST frameworks. By doing so,                            effective channel is
+we derive the corresponding optimal channel decompositions                                                            1
+                                                                                                  HF = UΣΦ 2 ΩH       H
+                                                                                                              zf = UΛΩzf .                                 (24)
+and the associated MART strategies.
+   In ZF sense, the problem of maximizing the achievable rate                 By applying the GTD for UΛ, we obtain UΛ = QRPH . It
+(22) can be reformulated as                                                   follows that
+   Problem 1 (In ZF sense):
+                                                                                                  HF = UΛΩH       H H
+                                                                                                          zf = QRP Ωzf ,
+                     Ns 
+                                 
+                              log2 1 + e−ρi ·a
+                                               2
+          min                                                                 The diagonal entries of R are the optimization targets and
+            ρi
+                     i=1                                                      satisfy (18). Let PH ΩHzf = I, such that we can obtain the
+
+
+       Authorized licensed use limited to: FUDAN UNIVERSITY. Downloaded on March 25,2026 at 07:15:03 UTC from IEEE Xplore. Restrictions apply.
+YANG et al.: ACHIEVABLE RATE MAXIMIZATION IN MIMO-BICM SYSTEMS                                                                                           3351
+
+
+
+designed R from HF = QR. It follows that Ωzf = PH and
+           1
+F = VΦ 2 P.
+   Nevertheless, solving Problem 1 is mathematically in-
+tractable for several reasons: i) the majorization constraints
+are strongly non-convex, complicating the search for a global
+optimum; ii) the number of inequality constraints grows linearly
+with the number of antennas (or data streams), leading to ex-
+tremely high complexity in massive MIMO systems. To analyze
+the key challenges more effectively, we first consider a 2 × 2
+MIMO system to simplify the problem and uncover its core
+insights. Based on this 2-dimensional case, we then develop a
+recursive strategy to extend the solution to higher-dimensional
+systems. Before presenting the general case, we introduce the
+following definition.                                                             Fig. 3.   The value of g(x) with different product of two variables.
+   Definition 2:
+   • We denote PN (2 ≤ N ≤ Ns ) the “N -variable” optimiza-                     Theorem 3: For problem (26), there exists a constant thresh-
+                                                                                                           √
+      tion problem                                                           old ν = 1.64:
+                                                                                         √
+                                                                                            if μ2 ≥ ν, x = μ2 is the optimized solution, i.e.,
+                                                                                           μ
+                        N 
+                                                                           ρ∗1 = ρ∗2 = a22 ; conversely, for μ2 < ν the optimized SNRs of
+                               log2 1 + e−ρi ·a
+                                                2
+               min
+                ρi
+                                                                             the two subchannels are not equal (ρ∗1 = ρ∗2 ). The solution can
+                        i=1                                                  be calculated by one-dimensional (1-D) search.
+                        
+                        N
+                                      1  2
+                                         N
+                                                                                  Proof: See Appendix B.
+               s.t.           ρi =         λ ,                                  To provide a straightforward representation of Theorem 3, we
+                        i=1
+                                     αN i=1 i
+                                                                             depict the function g(x) under different μ (we omit the subscript
+                        k
+                                     1  2
+                                        k
+                                                                             of μ2 here) in Fig. 3. Given the threshold ν = 1.64, if μ ≥ ν,
+                              ρi ≤         λ ,    1 ≤ k < N,                                                                                              1
+
+                        i=1
+                                     αk i=1 i                                two optimized output SNRs must be the same, equal to μa2 ,
+                                                                                                                                                          2
+
+
+                                                                             marked with stars; otherwise, μ < ν, optimal output SNRs are
+     whose optimal solution is {ρ∗i (N )}N   i=1 . The variables             obtained by the 1-D search, marked with triangles.
+                                                                −1
+     {ρi (N )}N
+              i=1 are  initially assigned  as  {ρ∗i (N − 1)}N i=1               Remark 1: For 2 × 2 MIMO-BICM systems, we emphasize
+          λ2N
+     and α in the recursive process.                                         that different channel conditions including different μ and input
+                      N λ 2 a 2
+  • We define μN  i=1 ( iα ).                                               SNR α1 would yield different optimal channel decompositions.
+  • To prevent duplication of variable values, we impose an                  We provide an exact threshold ν = 1.64 for quantizing the
+     ordering constraint ρ1 (N ) ≥ ρ2 (N ) ≥ · · · ≥ ρN (N ).                channel conditions. Under good channel conditions (μ ≥ ν), the
+   Given a 2 × 2 MIMO effective channel matrix 2
+                                                      R ∈ R2×2  2
+                                                                  ,          overall achievable rate is limited by the weaker subchannel and
+                                             R1,1             R2,2
+we aim to optimize the output SNRs ρ1 = α and ρ2 = α                         can be improved by maximizing the output SNR of the weaker
+to maximize the achievable rate. According to Definition 2,                  subchannel. In contrast, under poor channel conditions (μ < ν),
+problem P2 is                                                                the achievable rate performance is dictated by the stronger
+                         2                                                 subchannel, where excessively weakening stronger subchannel
+                         
+                                log2 1 + e−ρi ·a                             to enhance the weaker subchannel would lead to performance
+                                                 2
+                min
+                  ρi                                                         degradation, and the optimal output SNR can be obtained by
+                         i=1
+                                                                            1-D search.
+                                  1  2
+                         2                  2
+                 s.t.        ρi = 2   λ ,                                       Remark    2: Further, for P2 , with ρ∗1 a2 · ρ∗2 a2 = μ, we define
+                         i=1
+                                 α i=1 i                                           ρ∗
+                                                                             r  ρ1∗ and r > 1, without loss of generality. Considering that
+                                                                                    2
+                                λ21                                          different channel singular values would yield varying μ, when
+                        ρ1 ≤        .                                (25)
+                                α                                            μ < 1.64, we investigate an inverse relationship between μ and
+                                                               R 2 a2        r, such that a decrease in μ leads to an increase in r. Specifically,
+To simplify the form of the problem, we set x = 1,1      =                   ρ∗1 increases and ρ∗2 decreases.
+                  2 λ2i a2                          α
+ρ1 a . With μ2 = i=1 ( α ), the original P2 then reduces to
+    2
+                                                                                   Proof: See Appendix C.
+a single-variable optimization problem over x:                                                                                                   λ2
+                                                                                Remark 3: Consider a smaller variable ρ3 initialized as α3
+                                               μ2
+                                                                             for optimization in a Nr × Nt (Nt > 2, Nr > 2) MIMO system.
+       min g(x) = log2 (1 + e−x ) + log2 1 + e− x
+         x                                                                   If ρ∗1 = ρ∗2 and ρ∗2 < ρ∗1 , ρ3 , ρ∗1 form a new 2-variable problem
+              λ21 a2        √                                                and it follows that (ρ3 a2 )(ρ∗1 a2 ) < (ρ∗2 a2 )(ρ∗1 a2 ) < 1.64. This
+        s.t.         ≥ x ≥ μ2 .                            (26)
+                α                                                            would result in a decrease of ρ3 by Remark 2. Due to the
+This reformulation leverages the symmetry in the original prob-              majorization constraint, ρ3 cannot be further optimized towards
+                                                                                             λ2
+lem P2 by reducing it to a function of x, allowing us to solve               weaker from α3 , and should remain unchanged. Then when
+g(x) in the feasible region. The following Theorem 3 provides                variables smaller than ρ3 are considered, we have the same
+the optimal solution for (26).                                               result. To simplify the optimization process for Ns > 2, we
+
+         Authorized licensed use limited to: FUDAN UNIVERSITY. Downloaded on March 25,2026 at 07:15:03 UTC from IEEE Xplore. Restrictions apply.
+3352                                                                                          IEEE TRANSACTIONS ON SIGNAL PROCESSING, VOL. 73, 2025
+
+
+
+                                                                                where the optimal x∗ can be obtained through 1-D search.
+                                                                                                                                                  1
+                                                                                                                                              ∗ N −1
+                                                                                We then have ρ∗N (N ) = xμ∗Na2 and ρ∗i (N ) = (x )a2 , i =
+                                                                                1, 2, · · · , N − 1.
+                                                                                      Proof: See Appendix E.
+                                                                                   Remark 4: Theorem 4 actually defines the first N subchan-
+                                                                                nels as the “well-conditioned” subchannels. The remaining sub-
+                                                                                channels are ill-conditioned. Optimizing the output SNRs of
+                                                                                these well-conditioned channels can improve the overall achiev-
+                                                                                able rate performance. Theorem 5 goes beyond the Eq. (26)
+                                                                                and transforms the high-dimensional problem into a single vari-
+        Fig. 4.    The recursive process of the proposed MART design.           able problem under the insight of Theorem 4. Moreover, the
+                                                                                two theorems provide valuable insights in terms of SNR: In
+                                                                                the low SNR regime (α → ∞), where μ → 0, this recursive
+optimize the output SNR of each corresponding subchannel in                     procedure will terminate at N = 2, indicating that the SVD is
+order of singular values from the largest to the smallest.                      optimal. This is because the largest singular value dominates the
+   Theorem 3, together with the above remarks, reveals a                        achievable rate, while optimizing other singular values yields
+broader principle that can be generalized from the two-                         negative gains by Remark 3. In the high SNR regime (α → 0),
+dimensional case to the higher-dimensional problem PNs . In                     where μN → ∞, all subchannels are considered to be well-
+particular, we propose to solve PNs in a recursive method                       conditioned. Then they can be optimized to be equal to improve
+starting from the basic problem P2 and proceeding step by                       the achievable rate performance, as considered in the GMD
+step. The whole process is shown in Fig. 4. At step N , we                      scheme. This analysis is consistent with the result in [23] in
+solve PN by Theorem 5 and check whether a certain criterion,                    the high and low SNR regimes. For the SNR from α → ∞
+to be formalized in Theorem 4, is satisfied. If the criterion is                to α → 0, our proposed MART-ZF provides a unified optimal
+not satisfied, we continue to solve PN +1 ; otherwise, once the                 solution framework.
+condition is met, the recursive procedure terminates, and we can                   The overall optimization framework is summarized in Al-
+directly obtain the optimal solution for PNs . We now state the                 gorithm 1. In particular, steps 4 ∼ 8 show that the optimal
+                                                                                                                  N −1                  (μN )1/N
+two key theorems that govern this recursive process.                            solution x∗ is achieved at (μN ) N , i.e., {ρi }N i=1 =    a2    ,
+   Theorem 4: For problem PN , if                                                                                 N −1
+                                                                                when the absolute error |g((μN ) N ) − g(x∗ )| is less than the
+                                                1
+                                 (μN ) N                                        specified numerical error tolerance η. Otherwise, the optimal
+                            ρ∗N (N ) =   ,                 (27)                 output SNRs for PN satisfy Eq. (27). According to Theo-
+                                    a2
+                                                                                rem 4, this recursive process is terminated and the remain-
+the recursive process stops, and the optimal solution for Prob-
+                                                                                ing output diagonals in R are Ri,i = λi , i = N + 1, · · · , Ns .
+lem 1 is
+                                                                                After obtaining the diagonal entries in R, the correspond-
+           ρ∗i = ρ∗i (N ), i = 1, 2, . . . , N,                                 ing channel decomposition UΛ = QRPH is performed via
+                 λ2                                                             the GTD theorem [25]. It follows that Ωzf = PH . This opti-
+           ρ∗i = i , i = N + 1, N + 2, . . . , Ns .    (28)                     mal channel decomposition constructs the MART-ZF, which
+                  α
+                                                                                adapts to the specific channel conditions to maximize the
+     Proof: See Appendix D.
+                                                                                achievable rate.
+   Theorem 4 provides the stopping condition for the recur-
+sive optimization procedure. It also implies that when the
+recursive process proceeds to the problem PN , the optimal                      B. Near Optimal MART-ZF
+output SNRs for the previous problem PN −1 must satisfy
+               −1
+                                     1
+                                   N −1                                            In this subsection, we propose to replace the global mini-
+{ρ∗i (N − 1)}N
+             i=1 =
+                   (μN −1 )
+                        a2                . This is because if ρ∗N −1 (N −      mum with a local minimum during the optimization process
+                    1
+                  N −1
+1) = (μN −1a2)    , the recursive process would terminate at                    that provides an alternative near-optimal solution without the
+PN −1 without proceeding to PN . With this understanding, we                    1-D search in Algorithm 1. This approach offers signifi-
+next provide a concrete method for solving PN under the insight                 cantly reduced complexity with only a slight performance
+of Theorem 4, as detailed in Theorem 5.                                         loss.
+   Theorem 5: When the recursive process proceeds to PN , the                      We revisit PN [cf. (29)] that aims to minimize g(x) =
+                                                                                                             1                      μN
+first (N − 1) variables at the optimal solution are identical and               (N − 1) log2 (1 + e−x             ) + log2 (1 + e− x ) with λμ2Naα2 ≥
+                                                                                                           N −1
+
+                                                                                                                                                    N
+can be collectively represented by a single variable x, defined                             N −1
+                                                                                x ≥ (μN ) N . The first-order derivative of g(x) is
+as x = ρμNNa2 . Then PN can be re-expressed as
+                                                                                                                                       
+                                                                                                                μN                 1
+                                                                                                 −x N −1 −1 1 + e x + μxN2 1 + ex
+                                                                                                      1                             N −1
+                                         1                   μN
+                                    −x N −1
+ min g(x) = (N − 1) log2 1 + e                +log2 1 + e− x                                 1
+  x                                                                               g  (x) =                         1                    .
+         μN α              N −1
+                                                                                            ln 2            1 + ex N −1
+                                                                                                                              μN
+                                                                                                                          1+e x
+ s.t.           ≥ x ≥ (μN ) N ,                                         (29)
+         λ2N a2                                                                                                                           (30)
+
+          Authorized licensed use limited to: FUDAN UNIVERSITY. Downloaded on March 25,2026 at 07:15:03 UTC from IEEE Xplore. Restrictions apply.
+YANG et al.: ACHIEVABLE RATE MAXIMIZATION IN MIMO-BICM SYSTEMS                                                                                           3353
+
+
+
+
+Algorithm 1: Framework for Solving Problem 1.                                  Algorithm 2: Near Optimal Solution for Solving Problem 1.
+
+
+
+
+                                                                                                                                                     1
+                                                                                                                                  (μN )
+                                                                               The near optimal output SNRs are {ρnear−zf }N
+                                                                                                                                                     N
+                                                                                                                   i       i=1 =     a2  and
+                                                                                                     2
+                                                                                                   λi
+Let g  (x) = 0, and we can directly derive the stationary point               {ρnear−zf
+                                                                                  i      }Ns
+                                                                                          i=N +1 =  α  . The near-optimal scheme  is  summa-
+            N −1
+x = (μN ) N . The second-order derivative of g(x) is                           rized in Algorithm 2. This approximation could potentially
+                 ⎛                                                             introduce performance degradation; however, the numerical
+                                         μN         μ2     μN                  simulations demonstrate that such degradation is negligible.
+       1 ⎜         −3
+             ⎜ −2μN x (1 + eμ ) + x4 e
+                              x    N   x
+g (x) =      ⎝                N                                                            V. TRANSCEIVER DESIGN IN MMSE SENSE
+        ln 2           (1 + e x )2
+                                      1
+                                                                  1
+                                                                      ⎞         In this section, we will focus on solving Problem 2 to obtain
+      (1 − N 1−1 )x N −1 −2
+                      1
+                               1+e x N −1
+                                            + N 1−1 x N −1 −2 ex
+                                                        2        N −1          MART-MMSE scheme.
+                                                                      ⎟
++                                                                    ⎟,
+                                        1
+                                      N −1
+                                            2                         ⎠        A. MART-MMSE
+                                1+e x
+                                                                                  For the transceiver design in MMSE sense, the precoder F
+                                                                        (31)   in (16) is modified as:
+                                                    N −1                                                             1
+whose value in the stationary point (μN ) N is                                                            F = VΦ 2 ΩH
+                                                                                                                    mmse ,                               (34)
+                                                                                                     Ns ×Ns
+                 N (μ   ) N −2 (μ
+                           3          1
+                                               1
+                                         (μN ) N
+                                                          1
+                                                 − e(μN ) N −1                 where Ωmmse ∈ C         is unitary and yet to be solved under
+          N −1         N           N)N e
+g  (μN ) N =                                     1 2         .              the MMSE criteria. The channel after precoding is
+                         ln 2(N − 1) 1 + e(μN ) N                                              HF = UΣΦ 2 ΩH
+                                                                                                               1
+                                                                                                                     H
+                                                                                                           mmse = UΛΩmmse .                              (35)
+                                                             (32)              Let Ha denote the augmented matrix
+                                                                        N −1                                          
+    To discuss the property of the stationary point x = (μN )   ,                         HF           I       0     √UΛ ΩH
+                                                                                  Ha = √
+                                                                         N
+                                        1          1                                                = Nr                     mmse .
+                                1
+we focus on the item ((μN ) N e(μN ) N − e(μN ) N − 1) and de-                            αINs           0 Ωmmse      αINs
+termine its positivity. This item is strictly increasing along                                                                   (36)
+       1                                                      1
+(μN ) N and we can directly obtain the zero point (μN ) N =                    Given the QR decomposition of Ha as Ha = Qa Ra [cf. (8)],
+                2
+1.28 (or (μN ) N = 1.64) through Armijo algorithm [32]. Hence,                 the output SNRs are related to the diagonal entries of the desired
+         2                     N −1
+if (μN ) N ≥ 1.64, x = (μN ) N is a local minimum point. Oth-                  Ra [cf. (12)]. Once the optimal output SNR and the corre-
+                  2                      N −1
+erwise, if (μN ) N < 1.64, x = (μN ) N is a local maximum                      sponding diagonal elements of Ra are obtained, we implement
+point.                                                                         the corresponding channel decomposition via GTD. We define
+                                                                               J ∈ C(Nr +Ns )×Ns as
+                     2
+    As long as (μN ) N ≥ 1.64, we approximately regard the local
+                                                                    1                                               
+                                                       (μN )                                                   UΛ
+minimum as the global minimum, i.e., {ρi }N
+                                                                    N
+                                                i=1 =     a2   . On                                    J     √        .                     (37)
+                             2
+the other hand, if (μN +1 ) N +1 < 1.64, it suggests that the (N +                                              αINs
+1)-th subchannel is too poor to further optimize. Therefore, the               We can obtain J = QRa PH through applying the GTD to J,
+(N + 1)-th subchannel remains approximately unchanged, and                     where Q ∈ C(Nr +Ns )×Ns , Ra ∈ RNs ×Ns and P ∈ CNs ×Ns . It
+the same applies to the subchannels after (N + 1). Then, we                    follows that
+                                                                                                            
+can obtain the number of subchannels to be optimized, i.e., N ,                                  I        0
+by the following condition                                                                Ha = Nr              Q Ra PH ΩHmmse .     (38)
+                                                                                                   0 Ωmmse
+                      2                         2                                                           
+               (μN ) N ≥ 1.64,       (μN +1 ) N +1 < 1.64.              (33)                                   Qa
+
+
+           Authorized licensed use limited to: FUDAN UNIVERSITY. Downloaded on March 25,2026 at 07:15:03 UTC from IEEE Xplore. Restrictions apply.
+3354                                                                                                IEEE TRANSACTIONS ON SIGNAL PROCESSING, VOL. 73, 2025
+
+
+
+Let Ωmmse = PH , such that the desired Ra can be obtained                                                          TABLE I
+from Ha = Qa Ra , where Qa ∈ C(Nr +Ns )×Ns is unitary.                                             THE THRESHOLDS COMPARISON OF THE ZF- AND
+                                                                                                            MMSE-BASED METHODS
+   Then we focus on solving Problem 2. We follow the notation
+in Definition 2 and denote PN the N -variable problem                                             Modulation    ZF Threshold     MMSE Threshold
+                                                                                                    QPSK                             1.98
+                   N 
+                                                                                                 16QAM                             1.69
+                                                                                                                     1.64
+                           log2 1 + e−ρi ·a
+                                            2
+   min                                                                                             64QAM                             1.65
+       ρi                                                                                         256QAM                             1.64
+                   i=1
+                   
+                   N                   N  2
+                                                      
+                                          λ      i
+       s.t.              (1 + ρi ) =                 +1 ,
+                   i=1                 i=1
+                                                 α                                    Algorithm 3: Framework for Solving Problem 2.
+                   k                  k             
+                                              λ2i
+                         (1 + ρi ) ≤                 +1 ,   1 ≤ k < N,         (39)
+                   i=1                 i=1
+                                                 α
+           N         λ2
+with μN  i=1 [(1 + αi )a2 ]. Solving Problem 2 also begin
+from a 2-variable problem P2 . Defining x = (1 + ρ1 )a2 and
+after some mathematical transformations, we formulate P2 as
+                                                                       μ2
+                   g(x) = log2 (1 + ea e−x ) + log2 (1 + ea e− x )
+                                             2                    2
+       min
+         x
+                           
+                         λ2             √
+        s.t.         1 + 1 a2 ≥ x ≥ μ2 .                          (40)
+                         α
+Then, the first-order derivative of g(x) is
+                2
+                    2         μ2
+                                           2
+              ea − ea + e x + μx22 ea + ex
+    g  (x) =                      μ2                  .    (41)
+                    ln 2 · (ea2 + e x )(ea2 + ex )
+                   √                                  √
+We find that x = μ2 is a stationary point, i.e., g  ( μ2 ) = 0.
+The second-order derivative of g(x) is
+
+   g  (x)                                                                           collectively treated as a single variable in PN . Consequently,
+                                                                μ2
+                                                                           
+                                                                                                               2 and reformulate PN as follows
+               2                                        2   μ2        μ2                                 μN
+         ea                  ex       − 2μ
+                                         x3 (e
+                                           2   a
+                                                   + e x ) + x42 e x                  we define x = (1+ρ  N )a
+       =                 a 2    x 2
+                                    +                   μ2                     ,
+         ln 2          (e + e )                  a 2
+                                             (e + e x )2
+                                                                               (42)                                   1
+                                                                                                                                          μN
+                                                                                                               a2 −x N −1
+                                                                                                                            + log2 1 + ea e− x
+                                                                                                                                         2
+
+                   √                                                                  min    (N − 1) log2 1 + e e
+                                                                                       x
+and at x =        μ2 , the second derivative becomes
+                                                                                                    μN                       N −1
+                           ⎛ √                2   √    ⎞                              s.t.                    ≥ x ≥ (μN ) N .                          (44)
+                                                                                                     λ2
+             √        e a2   2e μ2 − √2μ2 (ea + e μ2 )                                           1 + αN   a2
+       g  ( μ2 ) =       ⎝        2      √ 2
+                                                       ⎠.                      (43)
+                      ln 2          e a + e μ2
+                           √                     √                √                   Then (44) can be addressed through the 1-D search. By Theo-
+The numerator term (2e μ2 − √2μ2 (ea + e μ2 )) of g  ( μ2 )
+                                           2
+                                                                                                                 1
+
+                                                                                      rem 4, if ρ∗N (N ) = (μNa2) − 1, the optimization process stops
+                                                                                                                 N
+                                                                  √
+is a strictly increasing function of μ2 . This implies that g  ( μ2 )
+                                                                                      and yields optimal output SNRs of Problem 2. The whole
+has only one zero point, which determine the solution of P2 .
+         √                                                        √                   process is outlined in Algorithm 3.
+If g  ( μ2 ) ≥ 0 holds, from Theorem 3, it confirms that μ2
+                                                                                         Remark 5: We note that for a rank-R power allocation matrix
+is a global minimum
+                  √      point. Then the optimal output SNRs are
+                     μ                         √                  √                   Φ, the MART-ZF scheme supports at most R independent data
+{ρ∗i (2)}2i=1 = a22 − 1. Otherwise, if g  ( μ2 ) < 0, then μ2                       streams. In contrast, the MART-MMSE approach can decom-
+becomes a local maximum point. Therefore, we use the 1-D                              pose the effective channel into L ≥ R subchannels, where L
+search for (40) to obtain the optimal x∗ . Then the optimal out-                      is the adaptively determined optimal number of data streams in
+                           ∗
+put SNRs are ρ∗1 (2) = xa2 − 1 and ρ∗2 (2) = xμ∗ a2 2 − 1. The zero                   Algorithm 3. This adaptability allows MART-MMSE to support
+point of g  (x) is denoted as threshold ν, which can be obtained                    higher data rates, as demonstrated in the numerical results.
+by Armijo algorithm. It should be noted that ν in MMSE sense                             Given the diagonal entries of Ra , the GTD is employed to
+                   2
+is related to ea that is determined by the modulation order;                          perform the optimal matrix decomposition for J = QRa PH
+while ν is a constant 1.64 in ZF sense. We compare the different                      in (37), such that Ωmmse = PH , which constructs the MART-
+thresholds for the ZF- and MMSE-based methods in Table I.                             MMSE. Through above analysis and derivation, we find that
+   We then consider problem PN based on MMSE. It follows                              optimal solutions in the MMSE and ZF scenarios exhibit a sim-
+                                                   1
+                    −1                           N −1
+that {ρ∗i (N − 1)}N
+                  i=1 =
+                        (μN −1 )
+                             a2    − 1 according to Theo-                             ilar form, demonstrating the versatility of the proposed optimal
+rem 4. By Theorem 5, the first (N − 1) variables can then be                          transceiver framework.
+              Authorized licensed use limited to: FUDAN UNIVERSITY. Downloaded on March 25,2026 at 07:15:03 UTC from IEEE Xplore. Restrictions apply.
+YANG et al.: ACHIEVABLE RATE MAXIMIZATION IN MIMO-BICM SYSTEMS                                                                                    3355
+
+
+
+B. Near Optimal MART-MMSE                                                       Algorithm 4: Near Optimal Solution for Solving Problem 2.
+   In this subsection, similar to Section IV-B, we propose
+a near-optimal scheme of Algorithm 3. When PN −1 has
+                                   1
+the optimal solution at (μN −1 ) N −1 , we revisit PN [cf.
+                                                                        1
+(44)] that minimizes g(x)  (N − 1) log2 (1 + ea e−x
+                                                          2           N −1
+                                                            )+
+                μN                               N −1
+log2 (1 + ea e− x ) with
+            2                μN
+                             λ 2  ≥  x ≥  (μ N )  N . Its first-
+                             (1+ αN )a2
+order derivative is
+                                                       1
+                                                             
+                                  μN
+            a2        1
+                         −1 a2                  a2    x N −1
+           e −x     N −1    e +e    x
+                                         μN
+                                       + x2 e + e
+ g  (x) =                         1             μN
+                                                                .
+                  ln 2 · ea2 + ex N −1    ea 2 + e x
+                                                              (45)
+                                                         N −1
+We can directly obtain the stationary point (μN ) N . The sec-
+                         N −1
+ond derivative of g((μN ) N ) is
+           N −1
+  g  (μN ) N
+                                          1          1
+    N ea (μN ) N −2 ((μN ) N e(μN ) N − e(μN ) N − ea )
+          2       3            1                                  2
+
+  =                                      1  2          . (46)
+                                                                                                            TABLE II
+            ln 2 · N − 1)(ea2 + e(μN ) N                                            TOTAL EXECUTION TIME (IN SECONDS) OF VARIOUS METHODS IN
+                                                                         1
+                                                                                          MATLAB USING INTEL(R) CORE(TM) I7-14700KF
+                                                              1
+We observe that the term of the numerator [(μN ) N e(μN ) N −
+       1      2                                                1                          Schemes                  Near Optimal        Optimal
+e(μN ) N − ea ] in (46) is strictly increasing along (μN ) N .                  SNR
+                                                                                                     SVD UCD
+                                                                                                                     MART               MART
+                 N −1             N −1
+When g  ((μN ) N ) ≥ 0, (μN ) N is a local minimum point.                                                                         0.227 ( = 0.1)
+                              N −1                                                     0 dB          0.158 0.194       0.216
+The zero point of g  ((μN ) N ) can be obtained by Armijo                                                                        0.268 ( = 0.01)
+                                                        2
+algorithm (the threshold ν in Table I). Hence, if (μN ) N ≥ ν, we                     20 dB          0.156 0.195       0.219
+                                                                                                                                    0.289 ( = 0.1)
+                                          1                                                                                        0.812 ( = 0.01)
+can directly obtain {ρi (N )}i=1 = (μN ) N is the local minimum
+                             N
+
+solution of PN . We approximately regard the local minimum as
+                                                    2
+the global minimum. Therefore, as long as (μN ) N ≥ ν, we ap-
+proximately consider that the optimal solution has been found,                  about O(Nr Nt Ns + N · 1 ). The near-optimal algorithms 2 and
+               N −1
+i.e, x = (μN ) N . Similar to Section IV-B, we can determine                    4 do not require the 1-D search. Alternatively, N can also be
+N by                                                                            determined using methods such as dichotomization. Then, the
+                       2                      2
+                                                                                complexity of near-optimal schemes is about O(Nr Nt Ns +
+                (μN ) N ≥ ν,       μN +1 ) N +1 < ν,                     (47)   log2 (Ns )). We compared the execution time of different al-
+                                                                                gorithms using a 4 × 4 MIMO system with 16-QAM modula-
+where ν is shown in Table I. Then the near-optimal
+                                                         1                      tion and Ns = Nr . Table II reports the total runtime on 1, 000
+                                           (μN )
+output SNRs are {ρnear−mmse         }N              − 1 and
+                                                         N
+                           i         i=1 =    a2                                independent channel realizations. For the optimal MART, we
+                         2
+                        λi
+{ρnear−mmse
+   i         }Ns
+              i=N +1 =  α  . This  eliminates   the  multiple                   tested two different step sizes:  = 0.1 and  = 0.01. The results
+linear searches at the expense of a minor performance loss.                     at operating SNRs 0 dB and 20 dB show that the execution
+The simplified framework is shown in Algorithm 4.                               time increases with SNR, as more subchannels require the 1-D
+                                                                                search. A smaller step size improves search resolution but leads
+C. Complexity Analysis                                                          to a higher computational cost. Additionally, the near-optimal
+                                                                                MART scheme omits the 1-D search step entirely and achieves
+   Traditional methods that achieve the optimal precoding de-                   a consistently low execution time, which is comparable to con-
+signs are based on the gradient descent, such as [10], [20]. Since              ventional SVD-based and UCD-based schemes.
+the re-computation of the mutual information is required in each
+iteration or gradient update, their computation complexity is
+                                                                                                    VI. NUMERICAL RESULTS
+about O(iter · Ns · M Ns ), which grows exponentially with the
+number of transmission streams Ns .                                                We present next numerical examples to demonstrate the ef-
+   In contrast, the complexity of our proposed scheme only                      fectiveness of the our proposed optimal MART in MIMO-
+depends on the number of subchannels. Specifically, the com-                    BICM systems. Throughout the simulation, clustered delay line
+plexity of algorithms 1 and 3 comes mainly from the 1-D search,                 (CDL) channel is employed [33]. Specifically, we generate the
+which is proportional to O(N · 1 ). Here,  represents the search              CDL channel using the nrCDLChannel function in MATLAB ,
+accuracy of x, which is set to 0.1 in our numerical simulations.                where the delays and angles of arrival/departure of multipaths
+In addition, the complexity of GTD is about O(Nr Nt Ns ).                       within a cluster are typically similar, leading to high spatial
+Therefore, the complexity of our proposed optimal scheme is                     correlation of the MIMO channel. The carrier frequency is
+
+        Authorized licensed use limited to: FUDAN UNIVERSITY. Downloaded on March 25,2026 at 07:15:03 UTC from IEEE Xplore. Restrictions apply.
+3356                                                                                        IEEE TRANSACTIONS ON SIGNAL PROCESSING, VOL. 73, 2025
+
+
+
+
+Fig. 5. The achievable rate performance of (15) and its lower bound (21)      Fig. 6. The achievable rate performance comparison of different schemes
+in an 8 × 8 CDL channel with 64-QAM transmission.                             under CDL channel with 64-QAM transmission in ZF sense.
+
+
+3.5 GHz. The antenna array is 2×2 uniform plane array with
+vertical polarization (8 antenna elements in total) at both the
+transmitter and receiver; and the channel delay spread is 30 ns.
+All ergodic achievable rate results are obtained by averaging
+over 1000 Monte Carlo trials and are represented in the unit of
+bits/s/Hz versus SNR ρ  10 log10 α1 [dB].
+   The first example compares the achievable rate R [cf. (15)]
+and its lower bound RL [cf. (21)], employing a SVD-based
+transceiver. From Fig. 5, the lower bound and the simulated
+achievable rate under an 8 × 8 CDL channel match exactly at
+low and high SNR, and close to each other at medium SNR; that
+is, the lower bound serves as an appropriate approximation. This
+result illustrates the effectiveness of our proposed lower bound.
+   Fig. 6 shows the achievable rate of our proposed MART-ZF
+                                                                              Fig. 7.   The comparison of our proposed scheme in ZF and MMSE senses.
+scheme compared with the SVD-based scheme, the PL-CBD
+[23], the GMD-based scheme, which are all optimal ZF-based
+transceivers under different criteria. Here, we set Φ = I. A                  comparison between MMSE and ZF. The channel capacity
+visible fact is that the channel capacity under Gaussian in-                  with Gaussian inputs is simulated as the performance limit. To
+puts can grow unbounded as the SNR increases. With finite                     clearly clarify the advantage of our proposed MART-MMSE,
+constellation inputs (i.e., 64-QAM), the achievable rate under                we also compare it with the UCD, which is an enhancement
+an 8 × 8 MIMO system would saturate to the peak value 48                      of GMD in MMSE sense. In the low-SNR regime, the UCD-
+bits/s/Hz at high SNR. To maintain reliable transmission at                   genie scheme exhibits MI loss, yet this loss remains smaller
+lower SNRs, reduced data rates are supported by setting a lower               than that observed in the GMD-genie, attributed to the ad-
+channel-coding rate. To evaluate the theoretical performance                  vantageous MMSE property, which suppresses the effects of
+of our proposed scheme, for the detection of each later, we                   noise. Moreover, as illustrated in Remark 4, the optimization
+assume that a genie will eliminate the impact of erroneous                    result for our proposed MART-MMSE at low SNR regime
+detections from previous layers. In a similar manner, the genie-              is actually the SVD, which produces the same output SNRs
+aided GMD is performed for comparison. Results exhibit that                   under the ZF and MMSE criterion, and hence the performance
+the performance of SVD-based transceiver is limited in high-                  of MART-MMSE performs the same in both the criteria. As
+SNR regimes; while the GMD-based transceiver excels at high                   SNR increases, MART-MMSE will get a higher output SNR
+SNR but incurs performance losses at low SNR, which is con-                   in MMSE sense than that in ZF sense [34], leading to better
+sistent with the analysis in Remark 4. In contrast, the PL-                   achievable rate performance for MART-MMSE. Moreover, the
+CBD scheme demonstrates consistent suboptimal performance                     near-optimal MART-MMSE has a negligible performance loss.
+at both high and low SNRs. While our proposed scheme in                       In addition, our proposed scheme can approach the channel ca-
+ZF sense outperforms other algorithms across all SNR regimes.                 pacity in the whole SNR regime, with a reduced gap compared
+Our proposed near-optimal scheme (marked as red circle) has                   to GMD/UCD methods. The gap between the proposed MART-
+a minor performance loss compared with the optimal scheme                     MMSE and the channel capacity can be largely attributed to
+(black dashed line). This loss is due to the assumption that PN               the inherent limitations of the BICM system, as it essentially
+has the optimal solution at the GMV, which may not always                     overlooks the correlations between coded bits.
+hold in high-dimensional systems.                                                In Fig. 8, we compare the achievable rates of various designs
+   Fig. 7 illustrates the performance of our proposed scheme                  at SNR levels of 0 dB, 10 dB and 20 dB, respectively, with
+under the MMSE criterion, with a particular focus on the                      16-QAM transmission. It is observed that the UCD design
+
+        Authorized licensed use limited to: FUDAN UNIVERSITY. Downloaded on March 25,2026 at 07:15:03 UTC from IEEE Xplore. Restrictions apply.
+YANG et al.: ACHIEVABLE RATE MAXIMIZATION IN MIMO-BICM SYSTEMS                                                                                     3357
+
+
+
+
+Fig. 8. The achievable rate performance of different antennas with 16-QAM
+transmission.                                                                Fig. 10. Adaptive data stream selection across different SNRs using
+                                                                             16-QAM transmission.
+
+
+
+
+Fig. 9. The optimal power allocation for different schemes with 16-QAM
+transmission under 8 × 8 CDL channels.                                       Fig. 11. The achievable rate comparison of MART-MMSE and the UCD-
+                                                                             genie with fixed data streams using 16-QAM transmission.
+
+suffers from a noticeable performance degradation at the low
+                                                                             regime. Accordingly, the “SVD + WF” design also benefits at
+SNR (0 dB), though this degradation slightly diminishes with
+                                                                             low SNRs. In contrast, our proposed MART-MMSE scheme
+fewer antennas. This is because smaller antenna configurations
+                                                                             adaptively selects the optimal Ns and consistently approaches
+generally result in better channel conditions, making it easier
+                                                                             channel capacity across the entire SNR range.
+to satisfy the required threshold (ν in the Table I). Meanwhile,
+                                                                                Furthermore, we have added simulation results to demon-
+the SVD-based design consistently underperforms the UCD and
+                                                                             strate how the MART scheme adaptively adjusts the number
+proposed MART scheme at higher SNRs (10 dB and 20 dB),
+                                                                             of data streams Ns at different levels of SNR. As shown in
+and the performance gap becomes more pronounced as SNR
+                                                                             Fig. 10, MART-MMSE adaptively selects the suitable number
+increases, which is consistent with the analysis in Remark 4.
+                                                                             of data streams and supports more data streams than SVD with
+In contrast, our proposed MART-MMSE design demonstrates
+                                                                             WF (which is equivalent to that of MART-ZF according to
+superior performance across different antenna configurations,
+                                                                             (24)) under 16-QAM transmission over both 4 × 4 and 8 × 8
+confirming its robustness and effectiveness.
+                                                                             CDL channels. This observation further confirms the conclu-
+   We also investigate the impact of the optimal power al-
+                                                                             sion presented in Remark 5. To further verify this adaptability,
+location, as shown in Fig. 9. It should be noted that in the
+                                                                             we compare the achievable rate of MART-MMSE with UCD-
+UCD scheme, the number of transmitted data streams Ns is
+                                                                             genie benchmarks using fixed Ns = 1, 2, 3, 4 under 4 × 4 CDL
+not strictly constrained by the dimensionality of the channel
+                                                                             channels as shown in Fig. 11. It is observed that MART-MMSE
+matrix and should be pre-defined. For a fair comparison, we
+                                                                             dynamically adjusts Ns at each SNR and achieves superior
+limit Ns ≤ Nr . We evaluated two scenarios of the “UCD + WF”
+                                                                             performance.
+case: (i) matching Ns with the number of streams in the SVD
+design, which limits UCD performance at high SNRs; and (ii)
+                                                                                                        VII. CONCLUSION
+setting Ns = Nr to avoid that limitation, which improves the
+performance at high SNRs but introduces some degradation at                     This paper presents a unified MART design with finite con-
+low SNRs. These results confirm that optimal power allocation                stellation inputs for MIMO-BICM systems, which unifies the
+via WF significantly improves achievable rates in the low-SNR                optimal performance across all SNRs. We have established
+
+         Authorized licensed use limited to: FUDAN UNIVERSITY. Downloaded on March 25,2026 at 07:15:03 UTC from IEEE Xplore. Restrictions apply.
+3358                                                                                        IEEE TRANSACTIONS ON SIGNAL PROCESSING, VOL. 73, 2025
+
+
+
+a lower bound for the achievable rate and demonstrated its                     layer. It has shown in [35, Ch. 4.3] that the error probability of
+                                                                               √
+asymptotic optimality, offering a robust alternative formula                     M -PAM signal of the i-th layer is
+for practical applications. Based on the derived lower bound,                                                         √      
+we address the optimal transceiver design problem in both                                                      3 log 2( M )
+                                                                                                pe,i ≈ 2Q                       ,            (52)
+ZF and MMSE senses, and propose a unified solution frame-                                                      (M − 1)σz,i 2
+
+work that efficiently solves each case. Moreover, we pro-
+                                                                               with σ12 being the output SNR of the i-th layer and Q(x) =
+pose an alternative simplified near-optimal scheme with sig-                        "∞
+                                                                                     z,i
+                                                                                           t2                                          x2
+nificantly reduced complexity at the expense of minor per-                     √1
+                                                                                 2π x
+                                                                                         e− 2 dt. Utilizing the inequality Q(x) ≤ 12 e− 2 , we
+formance loss. Notably, our findings theoretically explain that                have
+                                                                                                                     √
+the SVD-based transceiver scheme achieves optimal rate per-                                                  3 log 2( M )ρi          ρi d2
+                                                                                                                                         min q
+formance in the low SNR regime (or low code rate), while                                         pe,i ≤ e−        2M −2       = e−       8       ,             (53)
+the GMD-based transceiver scheme excels in the high SNR                        where   d2min = M6−1 .In general, the bit error probability is
+regime (or high code rate). Our proposed framework effectively                 smaller than the symbol error rate, i.e., pe,ci,j ≤ pe,i , [35, Ch-
+unifies the theoretical design of optimal transceiver schemes                  4.4]. Based on (51) and (53), we have
+across the whole SNR regime with finite constellation inputs,
+                                                                                                          1                1
+thereby filling a critical gap in the academic literature on                                                           ≤ ρ ·a2                (54)
+this topic.                                                                                     1 + eρi (2ci,j −1)Δi,j   e i
+                                                                                                   d2   q
+                                                                               where         a2  min
+                                                                                                   8 ,      Li,j = ρi Δi,j ;    here Δi,j =
+                                                                               {minxi ∈Xj0 ỹi − xi 2 − minxi ∈Xj1 ỹi − xi 2 }     and
+                             APPENDIX A
+                         PROOF OF THEOREM 2                                    ỹi = Rŷi,i
+                                                                                         i
+                                                                                            . To ensure (54) always holds, we have
+                                                                               ρi (2ci,j − 1)Δi,j ≈ ρi a2 . Substituting it into (15), we
+   In BICM systems, the LLR for each bit is computed inde-                     can obtain the lower bound RL in (21). If ρi → ∞, it follows
+pendently. Since the effective channel matrix R is real-valued,                that RL = R = K; if ρi → 0, Li,j → 0 [cf. (20)], then we also
+the in-phase and quadrature components of the received signal                  have RL = R = 0. This concludes the proof.
+y in (6) and (11) are decoupled, leading to
+                                                                                                            APPENDIX B
+  ŷiI = Ri,i xIi + ẑiI ,   ŷiQ = Ri,i xQ     Q
+                                          i + ẑi , i = 1, 2, · · · , Ns ,                              PROOF OF THEOREM 3
+                                                                       (48)
+                                                                                  We have the first-order and second-order derivatives of g(x)
+where xIi , xQi ∈ X . Since the minimum Euclidean distance of                  in (26) as
+the in-phase and quadrature components remains consistent                                                               μ2
+                                                                                                    1 −(1 + e x ) + x22 (1 + ex )
+                                                                                                                    μ
+with that of the original M -QAM constellation, the LLR of each                              
+                                           √                                               g (x) =
+                                                                                                   ln 2
+                                                                                                               μ2                 .                            (55)
+bit is equal to the corresponding bit in a M -PAM signal, i.e.,                                          (1 + e x )(1 + ex )
+                                                                              and
+       1                                                                                                                                μ2          μ2   μ2   
+             min ŷ − Ri,i xi  − min ŷi − Ri,i xi 
+                      I        I 2            I        I 2
+                                                                                        1              ex        − x32 (1 + e x ) + x42 e x
+                                                                                                                          2μ
+      σz2 xIi ∈Xj0 i                 xIi ∈Xj1                                    g (x) =                         +               μ2                                .
+                                                            !                            ln 2         (1 + ex )2          (1 + e x )2
+       1
+   = 2       min ŷi − Ri,i xi  − min 1 ŷi − Ri,i xi 
+                                 2                        2                                                                                                    (56)
+      σz xi ∈M0k                     xi ∈Mk                                                                                    √
+                                                                               It follows directly from (55) that x = μ2 is a stationary point,
+                                                             (49)                      √
+                                                                               as g  ( μ2 ) = 0. Then we analyze the second derivative g  (x).
+where Mbk has the same definition as Xjb , but is the subset of                                                         #
+                                                                                     √          √         2         √                  √
+the M -QAM symbols. Similarly, for the quadrature component,                   g  ( μ2 ) = 2e μ2 − √ (1 + e μ2 )             (1 + e μ2 )2 ln 2 .
+                                                                                                           μ2
+we have the same result. Consequently, the achievable rate
+                                                                                                                                               (57)
+for the M -QAM input can be expressed
+                                    √       as the sum of the
+                                                                                        √                                 √
+achievable rates of two independent M -PAM signals via (20).                       If g ( μ2 ) ≥ 0 holds, it confirms that μ2 is a local mini-
+The achievable rate is associated with the bit error probability,              mum point. Now, we focus on the numerator in        √
+                                                                                                                                      (57) to deter-
+and given by                                                                   mine its positivity. We depict the numerator e μ2 − √1μ2 (1 +
+                                                                                 √
+             q                                              !              e μ2 ) in (57) as a function of μ2 in Fig. 12. It is straightforward
+          Ns 
+                                                   1                          to derive that the function is strictly increasing and therefore
+   R=                  1 − Eci,j ,y log2                            ,   (50)
+          i=1 j=1
+                                                1 − pe,ci,j                    has only one zero point, that is, μ2 = 1.64, which is solved by
+                                                                               the numerical calculation marked red in Fig. 12. Therefore, if
+                                                                                            √
+with                                                                           μ2 ≥ 1.64, μ2 is the local minimum point. Next, we show that
+                                                                                                               √
+                                                                               if μ2 ≥ 1.64, g  (x) ≥ 0 and μ2 is also the global minimum
+                                           1
+                      pe,ci,j =                                         (51)   point.
+                                  1 + e(2ci,j −1)Li,j                              The condition g  (x) ≥ 0 is equivalent to the following
+                                                                                                  
+                                   √ ci,j . We now consider
+being the bit error probability of bit                                                                    μ2     μ2
+                                                                                               − 1 + e x + 2 (1 + ex ) ≥ 0,                    (58)
+the symbol error probability of the M -PAM signal for each                                                       x
+
+        Authorized licensed use limited to: FUDAN UNIVERSITY. Downloaded on March 25,2026 at 07:15:03 UTC from IEEE Xplore. Restrictions apply.
+YANG et al.: ACHIEVABLE RATE MAXIMIZATION IN MIMO-BICM SYSTEMS                                                                                         3359
+
+
+
+
+                                            √                   √
+           Fig. 12.     The function of e       μ − √1 (1 + e       μ ).
+                                                      μ
+
+
+
+
+                                                                                                                                  x
+                                                                                                   Fig. 14.     The function of 1+e x.
+
+
+
+
+                                                                                  local maximum point, and we could use the 1-D search to obtain
+                                                                                  the optimal solution. This concludes the proof.
+
+                                                                                                         APPENDIX C
+                                                                                                      PROOF OF REMARK 2
+                                                                                                                                                   
+             Fig. 13.    The inverse relationship of μ and r.                       We denote a two-variable optimization problem as P2 that
+                                                                                  has a same form as (25), but with a varying μ < 1.64. The
+                                                                                                                                  
+                                                                                  optimal output SNRs of P2 are denoted as ρ1∗ and ρ2∗ . Without
+                                                                                                                           
+                                                                                                                       ρ∗
+or equivalently,                                                                  loss of generality, we set r = ρ1 ∗ with r > 1. We then focus
+                                                                                                                   2
+                                                                                  on exploring the relationship of r and μ, through revisiting the
+                                     2      μ
+                           x                                                      first-order derivative of (26), which has been derived in (55).
+                              x
+                                ≤   x
+                                       μ2 .                                (59)
+                          1+e     1+e x                                           We express the numerator of (55) as a function of r
+                                                                                                           √μ             √
+We define an auxiliary function f (x) = 1+e      x
+                                                   x , x > 0. Thus,
+                                                                                           h(r) = r 1 + e r − (1 + e μr ), r > 1.             (60)
+            
+proving g (x) ≥ 0 is equivalent to showing f (x) ≤ f ( μx2 ), ∀x ∈
+ √       λ2 a2
+                                                                                  Let h(r) = 0 and there is
+[ μ2 , zα ] if μ2 ≥ 1.64. We now analyze the property of f (x).                                         √μ           √
+                                  
+                                              −xex                                               r(1 + e r ) − (1 + e μr ) = 0,
+                                            x
+The first derivative of f (x) is f (x) = 1+e
+                                          (1+ex )2 . It can be read-
+                                                                                                                                                       (61)
+ily verified that the numerator 1 + ex − xex of f  (x) is strictly               which can be solved by the Armijo algorithm [32]. Fig. 13
+decreasing in x and has a unique zero point. This implies
+                                                        √       that              shows the inverse relationship of μ and r, i.e., the decrease of
+f (x) has a single maximum, which occurs at x∗ = 1.64. The                        μ increases r.
+value x∗ is the solution by solving f  (x∗ ) = 0. Then, for any                                                                            
+                                                                                     To analyze the trend of each variable, we substitute ρ1∗ and
+constant a < f (x∗ ), the equation f (x) = a has two solutions x0                           
+                                                                                  ρ2∗ (ρ1∗ > ρ2∗ ) into (61) to obtain
+and x1 such that f (x0 ) − f (x1 ) = 0. Without loss of generality,                                                            
+we assume r = xx10 ≥ 1 and x0 · x1 = η. From f (x0 ) = f (x1 ),                                        ρ1∗ a2                  ρ2∗ a2
+                                                                                                                      =   ∗ 2 .             (62)
+we can establish the inverse relationship of η and r, i.e., the                                       1+e     ρ1∗ a21 + eρ 2 a
+increase of r decreases η. The detail  √ is in Appendix C. We                     From the property of function 1+e x
+                                                                                                                      x as depicted in Fig. 14 and
+notice that when r = 1, x1 = x0 = 1.64 = x∗ . As r increases                                                                         
+                                                                                  the condition (62), we obtain that any ρ1∗ and ρ2∗ satisfying
+larger than 1, η < 1.64. More generally, for any x in the fea-
+                 √    λ2 a2                                                       (62) corresponds to a horizontal line in Fig. 14 corresponding
+sible region [ μ2 , 1α ], there must exist η ≤ 1.64, such that                    to different μ. It also shows that as the horizontal line moves
+x ≥√xη and h(x) = h( xη ). Then f (x) increases
+                                             √       in the interval                                                                    
+                                                                                  downward, r becomes larger, μ becomes smaller, ρ1∗ increases
+[ xη , 1.64) and decreases in the interval [ 1.64, x]. Recalling                        
+                                                                                          ∗
+                                               √                                  and ρ2 decreases. Hence, under the majorization constraint,
+that μ2 ≥ 1.64 ≥ η and the constraint x ≥ μ2 , we have x ≥                        a decrease in μ (μ < 1.64) leads to more “polarized” optimal
+ x ≥ x . According to the property of h(x) and Fig. 14, we have
+μ2      η
+                                                                                  output SNRs; otherwise, an increase in μ leads to more “con-
+h( μx2 ) ≥ h(x) and g  (x) ≥ 0.
+                  √                                                               centrated” optimal output SNRs. As shown in Fig. 3, the optimal
+     Therefore, μ2 is also the global minimum point. Con-
+                √               √                                               solution of μ = 1 is more polarized than the case of μ = 1.5.
+versely, if g ( μ2 ) < 0, then μ2 becomes a local maximum
+point, which would not be the optimal solution for our objective                                          APPENDIX D
+function. We define ν = 1.64 as a threshold. This threshold in-                                       PROOF OF THEOREM 4
+dicates the boundary between two different solution behaviors:
+                                                                √                    Assume that problem PN has variables {ρi (N )}N
+when μ2 ≥ ν, g(x) is increasing monotonically, and hence μ2                                                                           i=1 , which
+                                                  √                                                                 −1     λ2N
+is the global minimum point; when μ2 < ν, μ2 becomes a                            are initialized as {ρ∗i (N − 1)}N
+                                                                                                                  i=1  and  α  , respectively. To
+
+         Authorized licensed use limited to: FUDAN UNIVERSITY. Downloaded on March 25,2026 at 07:15:03 UTC from IEEE Xplore. Restrictions apply.
+3360                                                                                           IEEE TRANSACTIONS ON SIGNAL PROCESSING, VOL. 73, 2025
+
+
+
+prevent duplicate values of variables, without loss of generality,
+we set
+
+         ρN (N ) ≤ ρ∗N −1 (N − 1) ≤ · · · ≤ ρ∗1 (N − 1).             (63)
+
+   We solve PN recursively, starting with P2 . The subchannels
+are ordered by their singular values, from largest to smallest.
+                      1
+                    μ2                                                                                 Fig. 15.    The trend of ρN change.
+If {ρ∗i (2)}2i=1 = a22 , we proceed to solve P3 ; otherwise, the
+process stops as indicated by Remark 3. Similarly, for P3 , if
+                     1                                                  1
+
+{ρ∗i (3)}3i=1 = (μa32) , then we proceed to P4 . If ρ∗3 (3) = (μa32) ,
+                     3                                                  3
+                                                                                To prevent duplication of variable values, we impose the or-
+we have ρ∗3 (3)a2 · ρ∗i (3)a2 < 1.64 for i = 1, 2, leading to                 dering constraint without loss of generality during the recursive
+ρ4 (4)a2 · ρ∗i (3)a2 < ρ∗3 (3)a2 · ρ∗i (3)a2 < 1.64. By Remark 2,             process,
+                                                       λ2                                                                             
+ρ4 (4) should decrease from its initialized value α4 . However,                          ρN (N ) ≤ ρN −1 (N − 1) ≤ · · · ≤ ρ1 (N − 1).               (65)
+due to the majorization constraint, it cannot decrease any fur-
+ther, thus halting the recursive process. This ensures that when                 Next, we consider the case where an increase in ρN (N )
+                                                                                                                    
+the procedure reaches PN , there must be {ρ∗i (N − 1)}N        −1
+                                                             i=1 =
+                                                                              causes a decrease in one of the ρi (N − 1). Without loss of
+         1
+(μN −1 ) N −1                                                                 generality, let i = N − 1. Two cases may occur. On the one
+              . This implies that (ρ∗i (N − 1)a2 )(ρ∗j (N − 1)a2 ) ≥                                    
+     a2                                                                       hand, if ρN (N )a2 · ρN −1 (N − 1)a2 ≥ 1.64, it follows that
+             ∗
+1.64 and ρi (N − 1) = ρ∗j (N − 1), ∀i, j ≤ N − 1.                                                                          
+                                      1                                       ρN (N ) = ρN −1 (N − 1) and ρN (N )a2 · ρi (N − 1)a2 ≥ 1.64
+                                    N −1                                                                                              
+   If ρ∗N −1 (N − 1) = (μN −1a2)      , it follows that (ρ∗N −1 (N −          for i = 1, 2, · · · , N − 1. Under this condition, all ρi (N − 1)
+           ∗
+1)a ) · (ρi (N − 1)a ) < 1.64 for i = 1, · · · , N − 1. Then
+    2                    2                                                                                                      1/N
+                                                                              and ρN (N ) converge to the same value (μNa)2 , meaning
+                                              λ2
+ρN (N ) and ρi (N ) (initialized as αN and ρ∗i (N − 1),                                              
+                                                                              ρ1 (N − 1) = · · · = ρN −1 (N − 1).
+                                                                                                                     
+respectively) form a new two-variable problem, where                             On the other hand, if ρN (N )a2 · ρN −1 (N − 1)a2 < 1.64 and
+ρN (N )a2 · ρ∗i (N − 1)a2 < ρ∗N −1 (N − 1)a2 · ρ∗i (N − 1)a2 <                 
+                                                                              ρN −1 (N − 1) decreases to a critical point that
+1.64, i = 1, 2, · · · , N − 1. By Remark 2, ρN (N ) should
+                                                                                                                       
+                                        λ2
+decrease from the initial value αN . However, due to the                                      ρN −1 (N − 1)a2 · ρ1∗ (N − 1)a2 = 1.64.                (66)
+                                        λ2                                                                    
+majorization constraint, ρN (N ) = αN cannot decrease further.                where ρ1∗ (N − 1) = ρk∗ (N − 1) holds for k = 2, 3, · · · , N −
+Hence, there is no further room for joint optimization of ρN (N )             1 according to the previous analysis, then we have
+with other variables. Therefore, the recursive process stops after                                                                         
+                                                 λ2
+solving PN −1 and we conclude that ρ∗i = αi , i = N, · · · , Ns               ρN (N )a2 · ρk∗ (N − 1)a2 < ρN −1 (N − 1)a2 · ρk∗ (N − 1)a2 ,
+and ρ∗i = ρ∗i (N − 1), i = 1, · · · , N − 1. This concludes the                                                                       (67)
+proof.                                                                        where the inequality holds because ρN (N )a2 · ρN −1 (N −
+                                                                                                                                                 
+
+                                                                                                                           
+                                                                              1)a2 < 1.64 and results in ρN (N ) = ρN −1 (N − 1) accord-
+                                                                                                                                            
+                              APPENDIX E                                      ing to Theorem 3. Here, ρN (N )a2 and any one of {ρk (N −
+                                                                                   2 N −1
+                          PROOF OF THEOREM 5                                  1)a }k=1 form a new two-variable optimization, which
+                                                                              leads to a decrease in ρN (N ). Therefore, ρN (N ) never in-
+  We consider that the problem PN optimizes over variables                                                                               
+                                   ∗         2 N −1   λ2N a2                  creases to the extent that makes ρN∗−1 (N − 1)a2 · ρk∗ (N −
+{ρi (N )a2 }N
+            i=1 , initialized as {ρi (N − 1)a }i=1 and α , re-                                                                   
+                                                                              1)a2 ≤ 1.64. It shows that ρi∗ (N − 1)a2 · ρj∗ (N − 1)a2 >
+spectively. According to Theorem 4, when proceeds to problem                                                                             −1
+PN , PN −1 has achieved its global minimum at                                 1.64, ∀i, j ≤ N − 1 always holds and {ρi∗ (N − 1)}N       i=1 will
+                                                                              converge to the same value according to Theorem 3. Then
+                                                                                                            
+
+                               −1
+                                                     1
+                                           (μN −1 ) N −1                      we have ρN −1 (N − 1) = ρk (N − 1), k = 2, 3, · · · , N − 2. A
+                {ρ∗i (N − 1)}N
+                             i=1 =                       .                    visual representation of this logic is provided in Fig. 15.
+                                               a2                                            
+                                                                                 Thus,      PN −1    keeps     its      optimal     solution    at
+Theorem 3 shows an important fact that as long as ρi (N )a2 ·                    
+                                                                              {ρi∗ (N − 1)a2 }N   −1
+                                                                                                     = x
+                                                                                                           1
+                                                                                                         N −1 /a2    during    the   optimization
+ρj (N )a2 ≥ 1.64, ∀i, j ≤ N , the solution satisfies that ρ∗i (N ) =                            i=1
+                                                                              of ρN (N ). This implies that, as ρN (N ) varies, the optimal
+                                                                1
+
+ρ∗j (N ). Then, they converge to {ρ∗i (N )}N      (μN )         N                                                                             1
+                                           i=1 =      a2 . This               values of the first (N − 1) variables remain equal to x N −1 .
+conclusion will be followed throughout the proof. Let us define
+   
+                                                                                 According to majorization theory, the problem PN then re-
+PN −1 as a sub-problem of PN here to distinguish it from PN −1 ,              duces to minimizing the following function:
+whose product of variables is                                                                                     1
+                                                                                                                                          μN
+                                                                                 min (N − 1) log2 1 + e−x                 + log2 1 + e− x
+                                                                                                                 N −1
+
+                      −1
+                     N
+                                               μN                                x
+                x=              ρi (N )a2 =             ,            (64)                    μN α              N −1
+                                              ρN (N )a2                           s.t.        2   2
+                                                                                                    ≥ x ≥ (μN ) N .                                  (68)
+                      i=1                                                                    λN a
+which varies with the optimization of ρN (N ). The optimal                    The optimal solution x∗ can be obtained through 1-D search.
+                                                 −1
+output SNRs of PN −1 are denoted as {ρi∗ (N − 1)}N
+                                                 i=1 .                        This completes the proof.
+
+        Authorized licensed use limited to: FUDAN UNIVERSITY. Downloaded on March 25,2026 at 07:15:03 UTC from IEEE Xplore. Restrictions apply.
+YANG et al.: ACHIEVABLE RATE MAXIMIZATION IN MIMO-BICM SYSTEMS                                                                                            3361
+
+
+
+                               REFERENCES                                         [19] L. Chen, Z. Wang, Y. Du, Y. Chen, and F. R. Yu, “Generalized
+                                                                                       transceiver beamforming for DFRC with MIMO radar and MU-MIMO
+ [1] E. Zehavi, “8-PSK trellis codes for a Rayleigh channel,” IEEE Trans.              communication,” IEEE J. Sel. Areas Commun., vol. 40, no. 6, pp. 1795–
+     Commun., vol. 40, no. 5, pp. 873–884, May 1992.                                   1808, Jun. 2022.
+ [2] G. Caire, G. Taricco, and E. Biglieri, “Bit-interleaved coded modula-        [20] M. Maleki, J. Jin, H. Wang, and M. Haardt, “Precoding design
+     tion,” IEEE Trans. Inf. Theory, vol. 44, no. 3, pp. 927–946, May 1998.            and PMI selection for BICM-MIMO systems with 5G new radio
+ [3] S. Muller-Weinfurtner, “Coding approaches for multiple antenna trans-             Type-I CSI,” IEEE Trans. Commun., vol. 72, no. 9, pp. 5334–5348,
+     mission in fast fading and OFDM,” IEEE Trans. Signal Process., vol.               Sep. 2024.
+     50, no. 10, pp. 2442–2450, Oct. 2002.                                        [21] E. Akay, E. Sengul, and E. Ayanoglu, “Bit interleaved coded multiple
+ [4] E. Biglieri, G. Taricco, and E. Viterbo, “Bit-interleaved time-space codes        beamforming,” IEEE Trans. Commun., vol. 55, no. 9, pp. 1802–1811,
+     for fading channels,” in Proc. Conf. Inf. Sci. Syst., Princeton, NJ, pp.          Sep. 2007.
+     WA 4.1–WA 4.6, Mar. 2000.
+                                                                                  [22] N. Gresset and M. Khanfouci, “Precoded BICM design for MIMO trans-
+ [5] S. Miao et al., “Trends in channel coding for 6G,” Proc. IEEE, vol. 112,
+                                                                                       mit beamforming and associated low-complexity algebraic receivers,”
+     no. 7, pp. 653–675, Jul. 2024.
+                                                                                       in Proc. IEEE Global Telecommun. Conf., Piscataway, NJ, USA: IEEE
+ [6] M. Vu and A. Paulraj, “MIMO wireless linear precoding,” IEEE Signal
+                                                                                       Press, 2008, pp. 1–5.
+     Process. Mag., vol. 24, no. 5, pp. 86–105, Sep. 2007.
+                                                                                  [23] J. Yang et al., “Complexity-scalable near-optimal transceiver design for
+ [7] A. Scaglione, S. Barbarossa, and G. B. Giannakis, “Filterbank
+                                                                                       massive MIMO-BICM systems,” 2025, arXiv:2504.09233.
+     transceivers optimizing information rate in block transmissions over
+                                                                                  [24] P. Fertl, J. Jalden, and G. Matz, “Performance assessment of MIMO-
+     dispersive channels,” IEEE Trans. Inf. Theory, vol. 45, no. 3, pp. 1019–
+                                                                                       BICM demodulators based on mutual information,” IEEE Trans. Signal
+     1032, Apr. 1999.
+ [8] S. Jing and C. Xiao, “Linear MIMO precoders with finite alphabet inputs           Process., vol. 60, no. 3, pp. 1366–1382, Mar. 2012.
+     via stochastic optimization and deep neural networks (DNNs),” IEEE           [25] Y. Jiang, W. Hager, and J. Li, “The generalized triangular decomposi-
+     Trans. Signal Process., vol. 69, pp. 4269–4281, 2021.                             tion,” Math. Comput., vol. 77, no. 262, pp. 1037–1056, 2008.
+ [9] F. Perez-Cruz, M. R. D. Rodrigues, and S. Verdu, “MIMO Gaussian              [26] G. Foschini, G. D. Golden, R. A. Valenzuela, and P. W. Wolniansky,
+     channels with arbitrary inputs: Optimal precoding and power allocation,”          “Simplified processing for high spectral efficiency wireless communi-
+     IEEE Trans. Inf. Theory, vol. 56, no. 3, pp. 1070–1084, Mar. 2010.                cation employing multi-element arrays,” IEEE J. Sel. Areas Commun.,
+[10] C. Xiao, Y. R. Zheng, and Z. Ding, “Globally optimal linear precoders             vol. 17, pp. 1841–1852, Nov. 1999.
+     for finite alphabet signals over complex vector Gaussian channels,” IEEE     [27] J. Yang, W. Hu, and Y. Jiang, “Channel bi-diagonalization for MIMO
+     Trans. Signal Process., vol. 59, no. 7, pp. 3301–3314, Jul. 2011.                 communications,” IEEE Wireless Commun. Lett., vol. 12, no. 1, pp. 163–
+[11] T. Berger and D. Tufts, “Optimum pulse amplitude modulation–I:                    167, Jan. 2023.
+     Transmitter-receiver design and bounds from information theory,” IEEE        [28] J. Yang, W. Hu, Y. Jiang, and X. Wang, “Parallel channel bidiago-
+     Trans. Inf. Theory, vol. 13, no. 2, pp. 196–208, Apr. 1967.                       nalization for massive MIMO systems,” in Proc. IEEE/CIC Int. Conf.
+[12] D. P. Palomar and Y. Jiang, “MIMO transceiver design via majorization             Commun. China (ICCC), Piscataway, NJ, USA: IEEE Press, 2024, pp.
+     theory,” Found. Trends Commun. Inf. Theory, vol. 3, nos. 4–5, pp. 331–            717–722.
+     551, 2007.                                                                   [29] A. Martinez, A. G. I Fabregas, G. Caire, and F. M. Willems, “Bit-
+[13] D. P. Palomar, J. M. Cioffi, and M. A. Lagunas, “Joint Tx-Rx beam-                interleaved coded modulation revisited: A mismatched decoding per-
+     forming design for multicarrier MIMO channels: A unified framework                spective,” IEEE Trans. Inf. Theory, vol. 55, no. 6, pp. 2756–2765, Jun.
+     for convex optimization,” IEEE Trans. Signal Process., vol. 51, no. 9,            2009.
+     pp. 2381–2401, Sep. 2003.                                                    [30] C. Studer, A. Burg, and H. Bolcskei, “Soft-output sphere decoding:
+[14] D. P. Palomar, M. A. Lagunas, and J. M. Cioffi, “On the optimal structure         Algorithms and VLSI implementation,” IEEE J. Sel. Areas Commun.,
+     of transmit-receive linear processing for MIMO systems,” in Proc. 40th            vol. 26, no. 2, pp. 290–300, Feb. 2008.
+     Annu. Allerton Conf. Commun., Contr., Comput., Monticello, IL, USA,          [31] W. Zhou and W. H. Lam, “A fast LMMSE channel estimation method
+     2002, vol. 40, pp. 683–692.                                                       for OFDM systems,” EURASIP J. Wireless Commun. Netw., vol. 2009,
+[15] Y. Jiang, J. Li, and W. W. Hager, “Joint transceiver design for MIMO              no. 1, pp. 1–13, Dec. 2009.
+     communications using geometric mean decomposition,” IEEE Trans.              [32] L. Armijo, “Minimization of functions having Lipschitz continuous first
+     Signal Process., vol. 53, no. 10, pp. 3791–3803, Oct. 2005.                       partial derivatives,” Pacific J. Math., vol. 16, no. 1, pp. 1–3, 1966.
+[16] Y. Jiang, J. Li, and W. W. Hager, “Uniform channel decomposition for         [33] “Study on channel model for frequencies from 0.5 to 100 GHz,” 3rd
+     MIMO communications,” IEEE Trans. Signal Process., vol. 53, no. 11,               Generation Partnership Project, 3GPP TS 38.901, Sophia Antipolis,
+     pp. 4283–4294, Nov. 2005.                                                         France: Technical Specification Group Radio Access Network, Dec.
+[17] M. B. Shenouda and T. N. Davidson, “A framework for designing MIMO                2020.
+     systems with decision feedback equalization or Tomlinson-Harashima           [34] Y. Jiang, M. K. Varanasi, and J. Li, “Performance analysis of ZF and
+     precoding,” IEEE J. Sel. Areas Commun., vol. 26, no. 2, pp. 401–411,              MMSE equalizers for MIMO systems: An in-depth study of the high
+     Feb. 2008.                                                                        SNR regime,” IEEE Trans. Inf. Theory, vol. 57, no. 4, pp. 2008–2026,
+[18] S. Gong, C. Xing, X. Zhao, S. Ma, and J. An, “Unified IRS-aided                   Apr. 2011.
+     MIMO transceiver designs via majorization theory,” IEEE Trans. Signal        [35] J. G. Proakis and M. Salehi, Digital Communications. New York, NY,
+     Process., vol. 69, pp. 3016–3032, 2021.                                           USA: McGraw-Hill, 2008.
+
+
+
+
+          Authorized licensed use limited to: FUDAN UNIVERSITY. Downloaded on March 25,2026 at 07:15:03 UTC from IEEE Xplore. Restrictions apply.
+

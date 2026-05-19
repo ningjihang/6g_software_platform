@@ -1,0 +1,2 @@
+snr_db,avg_svd,avg_gmd_thp,avg_ucd,gain_gmd_thp_vs_svd,gain_ucd_vs_svd,gain_ucd_vs_gmd_thp,avg_svd_ber,avg_gmd_thp_ber,avg_ucd_ber,avg_svd_leakage,avg_gmd_thp_leakage,avg_ucd_leakage
+0.0,2.0608652440580775,0.26593766340530767,0.46011743015850115,-1.7949275806527698,-1.6007478138995763,0.19417976675319348,0.25,0.375,0.34375,0.0,0.0,0.0

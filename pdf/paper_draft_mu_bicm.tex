@@ -1,0 +1,184 @@
+\documentclass[11pt]{ctexart}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{mathtools}
+\usepackage[hidelinks]{hyperref}
+
+\urlstyle{same}
+\allowdisplaybreaks
+
+\newcommand{\file}[1]{\path{#1}}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\tr}{\operatorname{tr}}
+\newcommand{\diag}{\operatorname{diag}}
+\newcommand{\vct}[1]{\operatorname{vec}\!\left(#1\right)}
+\newcommand{\Id}{\bm{I}}
+
+\title{当前混合多用户预编码代码的 UCD 主线说明}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\section{范围}
+本文只描述当前仓库中仍作为主入口保留的 UCD 工作流。当前相关入口为：
+\begin{itemize}
+    \item 混合预编码主入口：\file{classical/compare.py}；
+    \item 共享-RF 环境：\file{classical/multiuser_simulation_environment.py}；
+    \item 结构化数字预编码：\file{classical/digital_precoder.py}；
+    \item 全数字包装入口：\file{full_digital_mu/compare_full_digital_strict_bd.py}。
+\end{itemize}
+
+\section{系统模型}
+考虑下行多用户混合预编码系统。基站具有 $N_t$ 根发射天线和 $N_{\mathrm{RF}}$ 条 RF 链路，服务 $K$ 个用户。每个用户具有 $N_r$ 根接收天线，并分配 $d$ 条数据流，总流数为
+\begin{equation}
+    D = Kd.
+\end{equation}
+
+第 $k$ 个用户的信道记为
+\begin{equation}
+    \bm{H}_k \in \mathbb{C}^{N_r \times N_t}.
+\end{equation}
+发射端采用共享模拟预编码器 $\bm{F}_{\mathrm{RF}}$ 与数字预编码器 $\bm{F}_{\mathrm{BB}}$，发送信号为
+\begin{equation}
+    \bm{x} = \bm{F}_{\mathrm{RF}}\bm{F}_{\mathrm{BB}}\bm{s},
+\end{equation}
+其中
+\begin{equation}
+    \bm{F}_{\mathrm{RF}} \in \mathbb{C}^{N_t \times N_{\mathrm{RF}}},
+    \qquad
+    \bm{F}_{\mathrm{BB}} \in \mathbb{C}^{N_{\mathrm{RF}} \times D}.
+\end{equation}
+第 $k$ 个用户的接收信号为
+\begin{equation}
+    \bm{y}_k
+    =
+    \bm{H}_k \bm{F}_{\mathrm{RF}}\bm{F}_{\mathrm{BB}}\bm{s}
+    +
+    \bm{n}_k,
+    \qquad
+    \bm{n}_k \sim \mathcal{CN}(\bm{0}, \Id_{N_r}).
+\end{equation}
+
+代码中统一采用按流归一化的信噪比
+\begin{equation}
+    \gamma = \frac{10^{\mathrm{SNR}_{\mathrm{dB}}/10}}{D}.
+\end{equation}
+
+\section{发端 CSI 模式}
+当前混合主入口仍支持三种发端 CSI 模式：
+\begin{itemize}
+    \item \code{perfect}：发端设计信道直接取真实信道；
+    \item \code{gaussian}：在真实信道上叠加目标 NMSE 的复高斯误差；
+    \item \code{mmse\_fullcov}：先离线估计 full covariance，再使用 pilot-LMMSE 获得发端估计。
+\end{itemize}
+
+为区分设计信道与真实接收信道，下文记
+\begin{equation}
+    \bm{H}_k^{(\mathrm{tx})}
+    \quad \text{为发端可见 CSI},
+    \qquad
+    \bm{H}_k^{(\mathrm{rx})}
+    \quad \text{为真实接收信道}.
+\end{equation}
+
+\subsection{Perfect 模式}
+在 \code{perfect} 模式下，
+\begin{equation}
+    \bm{H}_k^{(\mathrm{tx})}
+    =
+    \bm{H}_k^{(\mathrm{rx})}.
+\end{equation}
+
+\subsection{Gaussian 模式}
+在 \code{gaussian} 模式下，代码根据目标 NMSE 生成带误差的设计信道。即便发端采用失配信道设计，最终接收端性能仍统一在真实信道 $\bm{H}_k^{(\mathrm{rx})}$ 上评估。
+
+\subsection{MMSE FullCov 模式}
+在 \code{mmse\_fullcov} 模式下，代码先从当前信道模型采样估计信道向量 $\vct{\bm{H}}$ 的均值与协方差，再通过 repeated-identity pilot 做 LMMSE 估计。该估计结果作为 $\bm{H}_k^{(\mathrm{tx})}$ 参与后续模拟与数字预编码设计。
+
+\section{共享-RF 与 BD 缩减信道}
+模拟预编码器由 \file{classical/analog\_precoder.py} 基于各用户信道的相位结构构造，输出共享 constant-modulus 的 $\bm{F}_{\mathrm{RF}}$。在给定 $\bm{F}_{\mathrm{RF}}$ 后，第 $k$ 个用户的有效信道为
+\begin{equation}
+    \bar{\bm{H}}_k = \bm{H}_k^{(\mathrm{tx})}\bm{F}_{\mathrm{RF}}.
+\end{equation}
+
+随后对每个用户构造 block diagonalization 的零空间基。若第 $k$ 个用户对应的零空间基为 $\bm{N}_k$，则其 reduced channel 为
+\begin{equation}
+    \widetilde{\bm{H}}_k = \bar{\bm{H}}_k \bm{N}_k.
+\end{equation}
+UCD 数字块正是在每个 $\widetilde{\bm{H}}_k$ 上构造。
+
+\section{UCD 数字预编码}
+当前数字预编码主线只保留 UCD。对 reduced channel 做奇异值分解
+\begin{equation}
+    \widetilde{\bm{H}}_k = \bm{U}_k \bm{\Sigma}_k \bm{V}_k^H.
+\end{equation}
+UCD 分支并不直接使用纯线性 SVD 或 GMD 端点，而是先构造 MMSE 增广域，再通过等对角化得到统一的后验质量指标。
+
+代码中的关键步骤为：
+\begin{enumerate}
+    \item 按给定 $\gamma$ 构造增广项 $\alpha = 1/\gamma$；
+    \item 依据 \code{ucd\_waterfill} 与 \code{ucd\_min\_power\_loading} 生成功率加载；
+    \item 对加载后的奇异值构造增广奇异值；
+    \item 对增广域施加 strict-GMD 型右旋转，得到等对角上三角信道；
+    \item 合成发端块、接收滤波器与匹配的上三角有效信道。
+\end{enumerate}
+
+最终第 $k$ 个用户的数字块记为 $\bm{F}_k$，完整数字预编码器为
+\begin{equation}
+    \bm{F}_{\mathrm{BB}}
+    =
+    \left[
+        \bm{N}_1 \bm{F}_1,\ldots,\bm{N}_K \bm{F}_K
+    \right].
+\end{equation}
+代码随后对整体发射矩阵再做一次总功率归一化，使
+\begin{equation}
+    \|\bm{F}_{\mathrm{RF}}\bm{F}_{\mathrm{BB}}\|_F^2 = P_{\mathrm{dig}}.
+\end{equation}
+
+\section{UCD 接收机与评估}
+当前接收端评估不再使用并行逐流检测，而是统一采用与 UCD 发送结构匹配的接收机链路。对第 $k$ 个用户，代码保存：
+\begin{itemize}
+    \item 匹配接收滤波器；
+    \item 等效上三角信道；
+    \item 归一化前的原始上三角量。
+\end{itemize}
+
+在 Monte Carlo 评估时，代码复用固定的 symbol/noise 批次。每个用户先依据其上三角等效信道执行 THP 风格的符号递推，然后通过匹配接收滤波器形成等效观测，再做对角归一化与 modulo 折叠。最终的 BICM-GMI 与 BER 由 \file{classical/bicm\_metrics.py} 中的 THP-aware 评估函数给出。
+
+因此，当前汇报指标与旧线性并行检测不同，统一是 ``UCD 发端 + 匹配 UCD 接收机'' 下的结果。
+
+\section{Monte Carlo 与输出}
+代码通过 \file{classical/sic\_sample\_average.py} 为所有信道 realization 预生成共享 Monte Carlo 批次。对每个 SNR，当前主线输出：
+\begin{itemize}
+    \item \code{avg\_ucd}：匹配 UCD 接收机下的平均 GMI sum-rate；
+    \item \code{avg\_ucd\_ber}：平均 BER；
+    \item \code{avg\_ucd\_gaussian}：由逐流后验 $\rho$ 计算的 Gaussian 信息量上界；
+    \item \code{gap\_gaussian\_vs\_ucd}：Gaussian 信息量与有限字母 GMI 的差值；
+    \item \code{avg\_ucd\_leakage}：多用户泄漏相对期望功率的比例。
+\end{itemize}
+
+混合主线的 CSV 与图像输出由 \file{classical/compare.py} 写入 \file{classical/results/}；全数字主线的对应输出由 \file{full\_digital\_mu/compare\_full\_digital\_strict\_bd.py} 写入 \file{full\_digital\_mu/results/}。
+
+\section{当前结论}
+当前仓库主线已经收敛为 UCD 工作流：
+\begin{equation}
+    \text{真实信道生成}
+    \rightarrow
+    \text{发端 CSI 构造}
+    \rightarrow
+    \text{共享-RF 模拟预编码}
+    \rightarrow
+    \text{BD 缩减信道}
+    \rightarrow
+    \text{UCD 数字预编码}
+    \rightarrow
+    \text{匹配 UCD 接收机 Monte Carlo 评估}.
+\end{equation}
+本文档至此完整覆盖当前代码主线。
+
+\end{document}

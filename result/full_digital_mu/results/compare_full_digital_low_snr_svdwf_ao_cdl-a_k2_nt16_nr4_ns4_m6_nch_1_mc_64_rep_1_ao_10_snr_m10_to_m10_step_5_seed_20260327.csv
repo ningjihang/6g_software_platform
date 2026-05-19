@@ -1,0 +1,2 @@
+snr_db,avg_svd,avg_svd_waterfill,avg_ao,avg_gaussian_limit,gain_svd_waterfill_vs_svd,gain_ao_vs_svd_waterfill,avg_svd_leakage,avg_svd_waterfill_leakage,avg_ao_leakage,ao_init_frac_svd_waterfill,ao_init_frac_svd,ao_init_frac_gmd
+-10.0,1.3259692243519332,2.223391973081398,2.223391949694559,3.304123737813449,0.8974227487294648,-2.3386839131944726e-08,0.0,0.0,1.9807122370758064e-15,1.0,0.0,0.0

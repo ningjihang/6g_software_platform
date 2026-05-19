@@ -1,0 +1,836 @@
+\documentclass[11pt]{ctexart}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{mathtools}
+\usepackage{graphicx}
+\usepackage[hidelinks]{hyperref}
+
+\urlstyle{same}
+\allowdisplaybreaks
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\tr}{\operatorname{tr}}
+\newcommand{\diag}{\operatorname{diag}}
+\newcommand{\Id}{\bm{I}}
+\newcommand{\CN}{\mathcal{CN}}
+\newcommand{\Xset}{\mathcal{X}}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\title{共享-RF 多用户混合预编码中的\\优化问题与 SVD / GMD 的高低 SNR 分析}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{最终优化目标}
+考虑下行多用户共享-RF 混合预编码。基站有 $N_t$ 根天线、$N_{\mathrm{RF}}$ 条 RF 链路，服务 $K$ 个用户；每个用户有 $N_r$ 根接收天线、承载 $d$ 条数据流。总流数为
+\begin{equation}
+    D=Kd.
+\end{equation}
+
+发射信号为
+\begin{equation}
+    \bm{x}
+    =
+    \bm{F}_{\mathrm{RF}}\bm{F}_{\mathrm{BB}}\bm{s},
+\end{equation}
+其中
+\begin{equation}
+    \bm{F}_{\mathrm{RF}}\in\mathbb{C}^{N_t\times N_{\mathrm{RF}}},
+    \qquad
+    \bm{F}_{\mathrm{BB}}
+    =
+    \left[
+        \bm{F}_1,\ldots,\bm{F}_K
+    \right],
+    \qquad
+    \bm{F}_k\in\mathbb{C}^{N_{\mathrm{RF}}\times d}.
+\end{equation}
+
+用户 $k$ 的接收信号为
+\begin{equation}
+    \bm{y}_k
+    =
+    \bm{H}_k\bm{F}_{\mathrm{RF}}\bm{F}_{\mathrm{BB}}\bm{s}
+    +
+    \bm{n}_k,
+    \qquad
+    \bm{n}_k\sim\CN(\bm{0},\Id_{N_r}).
+\end{equation}
+
+最终真正想最大化的是当前接收机口径下的总速率
+\begin{equation}
+    \max_{\bm{F}_{\mathrm{RF}},\bm{F}_{\mathrm{BB}}}
+    \sum_{k=1}^{K} R_k^{(\mathrm{rx})},
+\end{equation}
+其中约束为
+\begin{equation}
+    \left|[\bm{F}_{\mathrm{RF}}]_{ij}\right|
+    =
+    \frac{1}{\sqrt{N_t}},
+    \qquad
+    \forall i,j,
+\end{equation}
+\begin{equation}
+    \left\|
+        \bm{F}_{\mathrm{RF}}\bm{F}_{\mathrm{BB}}
+    \right\|_F^2
+    =
+    D.
+\end{equation}
+
+也就是说，\textbf{优化目标}是最大化总速率，\textbf{优化约束}是 constant-modulus 模拟前端约束和总发射功率约束。
+
+\section{非完美 CSI 下的 full-covariance LMMSE}
+为了同时覆盖 perfect CSI 与非完美 CSI 两种情形，下面区分
+\begin{equation}
+    \bm{H}_k^{(\mathrm{tx})}
+    \quad\text{和}\quad
+    \bm{H}_k^{(\mathrm{rx})}.
+\end{equation}
+其中 $\bm{H}_k^{(\mathrm{tx})}$ 表示发端设计 precoder 时可见的 CSI，$\bm{H}_k^{(\mathrm{rx})}$ 表示最终接收端评估时的真实信道。
+
+在 perfect CSI 下，
+\begin{equation}
+    \bm{H}_k^{(\mathrm{tx})}
+    =
+    \bm{H}_k^{(\mathrm{rx})}
+    =
+    \bm{H}_k.
+\end{equation}
+在 \code{mmse\_fullcov} 非完美 CSI 下，
+\begin{equation}
+    \bm{H}_k^{(\mathrm{tx})}
+    =
+    \widehat{\bm{H}}_k,
+    \qquad
+    \bm{H}_k^{(\mathrm{rx})}
+    =
+    \bm{H}_k.
+\end{equation}
+
+\subsection{LMMSE 观测模型}
+当前代码先离线估计单用户信道向量的均值与 full covariance。令
+\begin{equation}
+    \bm{h}
+    =
+    \operatorname{vec}(\bm{H})
+    \in
+    \mathbb{C}^{N_rN_t\times 1},
+\end{equation}
+则先验写成
+\begin{equation}
+    \bm{h}
+    \sim
+    \mathcal{CN}(\bar{\bm{h}},\bm{C}_h).
+\end{equation}
+
+pilot 采用 repeated-identity 结构。若 pilot 长度为 $L$，则
+\begin{equation}
+    \bm{P}
+    =
+    \underbrace{
+        \left[
+            \Id_{N_t},\Id_{N_t},\ldots,\Id_{N_t}
+        \right]
+    }_{L/N_t\ \text{次}}
+    \in
+    \mathbb{C}^{N_t\times L}.
+\end{equation}
+
+对用户 $k$，pilot 观测为
+\begin{equation}
+    \bm{Y}_k
+    =
+    \bm{H}_k\bm{P}
+    +
+    \bm{N}_k,
+    \qquad
+    [\bm{N}_k]_{ij}\sim\mathcal{CN}(0,\sigma_p^2).
+\end{equation}
+向量化后可写成标准线性高斯模型
+\begin{equation}
+    \bm{y}_k
+    =
+    \bm{A}\bm{h}_k+\bm{n}_k,
+    \qquad
+    \bm{A}
+    =
+    \bm{P}^T\otimes \Id_{N_r}.
+\end{equation}
+
+\subsection{full-covariance LMMSE 估计式}
+在上述先验和观测模型下，创新协方差为
+\begin{equation}
+    \bm{\Sigma}_{\mathrm{innov}}
+    =
+    \bm{A}\bm{C}_h\bm{A}^H
+    +
+    \sigma_p^2 \Id.
+\end{equation}
+LMMSE 不是直接写结果，而是从 ``最小化真实信道与估计信道之间的均方误差'' 出发。先设一个仿射估计器
+\begin{equation}
+    \widehat{\bm h}_k
+    =
+    \bm b + \bm G \bm y_k.
+\end{equation}
+其优化目标是
+\begin{equation}
+    \min_{\bm b,\bm G}
+    \E\!\left[
+        \left\|
+            \bm h_k-\widehat{\bm h}_k
+        \right\|_2^2
+    \right].
+\end{equation}
+利用先验均值，把变量中心化。记
+\begin{equation}
+    \widetilde{\bm h}_k
+    =
+    \bm h_k-\bar{\bm h},
+    \qquad
+    \widetilde{\bm y}_k
+    =
+    \bm y_k-\bm A\bar{\bm h}.
+\end{equation}
+则观测模型可改写成
+\begin{equation}
+    \widetilde{\bm y}_k
+    =
+    \bm A \widetilde{\bm h}_k + \bm n_k.
+\end{equation}
+此时估计器可以写成
+\begin{equation}
+    \widehat{\bm h}_k
+    =
+    \bar{\bm h}
+    +
+    \bm G \widetilde{\bm y}_k,
+\end{equation}
+于是 MSE 变成
+\begin{equation}
+    J(\bm G)
+    =
+    \E\!\left[
+        \left\|
+            \widetilde{\bm h}_k-\bm G\widetilde{\bm y}_k
+        \right\|_2^2
+    \right].
+\end{equation}
+把平方项展开，可写成
+\begin{equation}
+    J(\bm G)
+    =
+    \tr(\bm C_h)
+    -
+    \tr(\bm G\bm A\bm C_h)
+    -
+    \tr(\bm C_h\bm A^H\bm G^H)
+    +
+    \tr\!\left(
+        \bm G
+        \bm{\Sigma}_{\mathrm{innov}}
+        \bm G^H
+    \right).
+\end{equation}
+对 $\bm G$ 求极小，可得正规方程
+\begin{equation}
+    \bm G \bm{\Sigma}_{\mathrm{innov}}
+    =
+    \bm C_h \bm A^H,
+\end{equation}
+因此最优解就是
+\begin{equation}
+    \bm{G}_{\mathrm{LMMSE}}
+    =
+    \bm{C}_h\bm{A}^H
+    \bm{\Sigma}_{\mathrm{innov}}^{-1}.
+\end{equation}
+于是后验均值，也就是代码里实际使用的发端 CSI 估计，为
+\begin{equation}
+    \widehat{\bm{h}}_k
+    =
+    \bar{\bm{h}}
+    +
+    \bm{G}_{\mathrm{LMMSE}}
+    \left(
+        \bm{y}_k-\bm{A}\bar{\bm{h}}
+    \right).
+\end{equation}
+这条式子可以直接理解成
+\begin{quote}
+估计值 = 先验均值 + 增益 $\times$ 观测创新。
+\end{quote}
+其中
+\begin{equation}
+    \bar{\bm h}
+\end{equation}
+是离线统计出来的先验均值；
+\begin{equation}
+    \bm y_k
+\end{equation}
+是当前这一次导频发送后得到的带噪观测；
+\begin{equation}
+    \bm A\bar{\bm h}
+\end{equation}
+表示 ``如果当前信道就等于先验均值，那么理论上应该看到的导频观测''；
+因此
+\begin{equation}
+    \bm y_k-\bm A\bar{\bm h}
+\end{equation}
+就是当前观测相对于先验平均情况的创新。LMMSE 增益
+\begin{equation}
+    \bm G_{\mathrm{LMMSE}}
+\end{equation}
+决定了我们该把这部分创新相信多少。
+
+所以当前代码里的逻辑是：
+\begin{enumerate}
+    \item 先离线用很多个 CDL-A 信道样本统计出先验均值 $\bar{\bm h}$ 和协方差 $\bm C_h$；
+    \item 再对当前未知真实信道发导频，得到带噪观测 $\bm y_k$；
+    \item 最后用上面的 LMMSE 更新式，把当前观测对先验均值做修正，得到 $\widehat{\bm h}_k$。
+\end{enumerate}
+再 reshape 回矩阵形式得到
+\begin{equation}
+    \widehat{\bm{H}}_k
+    =
+    \operatorname{unvec}(\widehat{\bm{h}}_k).
+\end{equation}
+
+因此在 \code{mmse\_fullcov} 模式下，后面的优化、结构化初始化与基线排序，都是基于 $\widehat{\bm{H}}_k$ 来设计；但最终接收机性能仍然在真实信道 $\bm{H}_k$ 上汇报。
+
+\section{为什么不能直接优化这个目标}
+困难在于：
+\begin{enumerate}
+    \item 接收机使用的是 hard-SIC / THP-aware 的有限星座打分，目标函数不光滑；
+    \item 共享模拟前端与数字块强耦合，问题高度非凸；
+    \item 模拟前端还带有 element-wise constant-modulus 约束。
+\end{enumerate}
+
+因此实际做法不是直接对上式求解，而是把它改写成一个\textbf{可微 surrogate 优化问题}。
+
+\subsection{原始硬判决目标是什么}
+当前线性分支在接收端采用的是 hard-SIC。把检测坐标系中的等效信道记为上三角矩阵 $\bm R_k$，则某个样本上的接收信号可写成
+\begin{equation}
+    \widetilde{\bm y}_k
+    =
+    \sqrt{\gamma}\bm R_k \bm s_k
+    +
+    \widetilde{\bm n}_k.
+\end{equation}
+hard-SIC 从最后一层往前递推。若第 $i$ 层之后的已判决符号为 $\hat s_{k,j}$，则当前层残差为
+\begin{equation}
+    \widetilde z_{k,i}^{(\mathrm{hard})}
+    =
+    [\widetilde{\bm y}_k]_i
+    -
+    \sum_{j=i+1}^{d}
+    \sqrt{\gamma}[\bm R_k]_{ij}\hat s_{k,j}.
+\end{equation}
+随后做硬判决：
+\begin{equation}
+    \hat s_{k,i}
+    =
+    \arg\min_{a\in\Xset}
+    \left|
+        \widetilde z_{k,i}^{(\mathrm{hard})}
+        -
+        \sqrt{\gamma}[\bm R_k]_{ii}a
+    \right|^2.
+\end{equation}
+
+也就是说，所谓 ``hard'' 的含义，不是把目标函数简单写成分类准确率，而是：\textbf{后续层干扰消除时使用的是硬符号判决值 $\hat s_{k,i}$，而不是 soft 平均值。}
+
+在此基础上，第 $q$ 个 bit 的 LLR 仍然按当前残差做 bit-wise log-sum-exp：
+\begin{equation}
+    L_{k,i,q}^{(\mathrm{hard})}
+    =
+    \log\sum_{a\in\Xset_{q,1}}
+    \exp\!\left(
+        -
+        \left|
+            \widetilde z_{k,i}^{(\mathrm{hard})}
+            -
+            \sqrt{\gamma}[\bm R_k]_{ii}a
+        \right|^2
+    \right)
+    -
+    \log\sum_{a\in\Xset_{q,0}}
+    \exp\!\left(
+        -
+        \left|
+            \widetilde z_{k,i}^{(\mathrm{hard})}
+            -
+            \sqrt{\gamma}[\bm R_k]_{ii}a
+        \right|^2
+    \right).
+\end{equation}
+
+于是当前接收机口径下的 hard-SIC bit-wise GMI 可以写成
+\begin{equation}
+    R_{k,\mathrm{hard}}
+    =
+    dQ
+    -
+    \frac{1}{N_{\mathrm{MC}}}
+    \sum_{n=1}^{N_{\mathrm{MC}}}
+    \sum_{i=1}^{d}
+    \sum_{q=1}^{Q}
+    \frac{1}{\ln 2}
+    \log\!\left(
+        1+
+        e^{-(2B_{k,i,q}^{(n)}-1)L_{k,i,q}^{(\mathrm{hard}),(n)}}
+    \right).
+\end{equation}
+
+因此，最原始的优化目标其实更接近
+\begin{equation}
+    \max_{\bm F_{\mathrm{RF}},\bm F_{\mathrm{BB}}}
+    \sum_{k=1}^{K} R_{k,\mathrm{hard}},
+\end{equation}
+只不过这个目标里嵌着硬判决递推 $\hat s_{k,i}$，所以它对优化变量既不平滑，也不利于梯度优化。
+
+\section{实际可微优化目标}
+\subsection{约束吸收到变量参数化里}
+把模拟前端直接参数化成相位矩阵
+\begin{equation}
+    \bm{F}_{\mathrm{RF}}(\bm{\Theta})
+    =
+    \frac{1}{\sqrt{N_t}}e^{j\bm{\Theta}},
+    \qquad
+    \bm{\Theta}\in\mathbb{R}^{N_t\times N_{\mathrm{RF}}},
+\end{equation}
+这样 constant-modulus 约束被自动满足。
+
+数字变量记为 $\{\bm{C}_k\}_{k=1}^K$。给定 $\bm{\Theta}$ 后，定义有效信道
+\begin{equation}
+    \widetilde{\bm{H}}_k(\bm{\Theta})
+    =
+    \bm{H}_k\bm{F}_{\mathrm{RF}}(\bm{\Theta}).
+\end{equation}
+把其他用户有效信道堆叠为 $\widetilde{\bm{H}}_{-k}(\bm{\Theta})$，定义投影矩阵
+\begin{equation}
+    \bm{\Pi}_k(\bm{\Theta})
+    =
+    \Id_{N_{\mathrm{RF}}}
+    -
+    \widetilde{\bm{H}}_{-k}(\bm{\Theta})^{\dagger}
+    \widetilde{\bm{H}}_{-k}(\bm{\Theta}),
+\end{equation}
+于是数字块写成
+\begin{equation}
+    \widetilde{\bm{F}}_k
+    =
+    \bm{\Pi}_k(\bm{\Theta})\bm{C}_k.
+\end{equation}
+
+把所有用户块拼接为
+\begin{equation}
+    \widetilde{\bm{F}}_{\mathrm{BB}}
+    =
+    \left[
+        \widetilde{\bm{F}}_1,\ldots,\widetilde{\bm{F}}_K
+    \right],
+\end{equation}
+再做总功率归一化
+\begin{equation}
+    \alpha(\bm{\Theta},\{\bm{C}_k\})
+    =
+    \sqrt{
+        \frac{D}{
+            \left\|
+                \bm{F}_{\mathrm{RF}}(\bm{\Theta})
+                \widetilde{\bm{F}}_{\mathrm{BB}}
+            \right\|_F^2
+        }
+    },
+\end{equation}
+\begin{equation}
+    \bm{F}_{\mathrm{BB}}(\bm{\Theta},\{\bm{C}_k\})
+    =
+    \alpha(\bm{\Theta},\{\bm{C}_k\})\widetilde{\bm{F}}_{\mathrm{BB}}.
+\end{equation}
+
+所以现在真正优化的变量就是
+\begin{equation}
+    \bm{\Theta}
+    \quad\text{和}\quad
+    \{\bm{C}_k\}_{k=1}^{K}.
+\end{equation}
+
+\subsection{可微速率 surrogate}
+训练时不用最终的 hard-SIC 指标，而用 soft-SIC surrogate。记当前检测坐标系中的接收残差为
+\begin{equation}
+    \widetilde{z}_{k,i}
+    =
+    [\widetilde{\bm{y}}_k]_i
+    -
+    \sum_{j=i+1}^{d}
+    \sqrt{\gamma}[\bm{R}_k]_{ij}\bar{s}_{k,j},
+\end{equation}
+对星座点 $a\in\Xset$ 定义距离
+\begin{equation}
+    D_{k,i}(a)
+    =
+    \left|
+        \widetilde{z}_{k,i}
+        -
+        \sqrt{\gamma}[\bm{R}_k]_{ii}a
+    \right|^2.
+\end{equation}
+
+给定温度 $T>0$，soft posterior 权重为
+\begin{equation}
+    w_{k,i}(a;T)
+    =
+    \frac{
+        e^{-D_{k,i}(a)/T}
+    }{
+        \sum_{b\in\Xset} e^{-D_{k,i}(b)/T}
+    }.
+\end{equation}
+对应的软符号估计为
+\begin{equation}
+    \bar{s}_{k,i}
+    =
+    \sum_{a\in\Xset}w_{k,i}(a;T)a.
+\end{equation}
+
+对第 $q$ 个 bit，soft LLR 写成
+\begin{equation}
+    L_{k,i,q}^{(\mathrm{soft})}
+    =
+    T\left[
+        \log\sum_{a\in\Xset_{q,1}} e^{-D_{k,i}(a)/T}
+        -
+        \log\sum_{a\in\Xset_{q,0}} e^{-D_{k,i}(a)/T}
+    \right].
+\end{equation}
+
+bit-wise log-loss 为
+\begin{equation}
+    \ell_{k,i,q}
+    =
+    \frac{1}{\ln 2}
+    \log\!\left(
+        1+e^{-(2B_{k,i,q}-1)L_{k,i,q}^{(\mathrm{soft})}}
+    \right).
+\end{equation}
+
+于是每用户 surrogate 速率定义为
+\begin{equation}
+    \widehat{R}_{k,\mathrm{soft}}
+    =
+    dQ
+    -
+    \frac{1}{N_{\mathrm{MC}}}
+    \sum_{n=1}^{N_{\mathrm{MC}}}
+    \sum_{i=1}^{d}
+    \sum_{q=1}^{Q}
+    \ell_{k,i,q}^{(n)}.
+\end{equation}
+
+\subsection{干扰泄漏惩罚}
+为避免单纯追求 surrogate 速率而放大跨用户干扰，定义
+\begin{equation}
+    P_{\mathrm{des}}
+    =
+    \sum_{k=1}^{K}
+    \left\|
+        \widetilde{\bm{H}}_k(\bm{\Theta})
+        \widetilde{\bm{F}}_k
+    \right\|_F^2,
+\end{equation}
+\begin{equation}
+    P_{\mathrm{off}}
+    =
+    \sum_{k=1}^{K}
+    \sum_{t\ne k}
+    \left\|
+        \widetilde{\bm{H}}_k(\bm{\Theta})
+        \widetilde{\bm{F}}_t
+    \right\|_F^2,
+\end{equation}
+\begin{equation}
+    \eta_{\mathrm{soft}}
+    =
+    \frac{P_{\mathrm{off}}}{P_{\mathrm{des}}}.
+\end{equation}
+
+\subsection{最终实际优化目标}
+于是训练时真正求解的是
+\begin{equation}
+    \boxed{
+    \min_{\bm{\Theta},\{\bm{C}_k\}}
+    \mathcal{L}(\bm{\Theta},\{\bm{C}_k\})
+    =
+    -
+    \sum_{k=1}^{K}\widehat{R}_{k,\mathrm{soft}}
+    +
+    \lambda_{\mathrm{int}}\eta_{\mathrm{soft}}
+    }.
+\end{equation}
+
+这就是整套联合优化最核心的数学式。
+
+\section{优化算法}
+由于 $\bm{\Theta}$ 与 $\{\bm{C}_k\}$ 强耦合，代码采用 alternating optimization：
+\begin{enumerate}
+    \item 固定 $\bm{\Theta}$，对 $\{\bm{C}_k\}$ 做若干步 Adam；
+    \item 固定 $\{\bm{C}_k\}$，对 $\bm{\Theta}$ 做若干步 Adam；
+    \item 每次更新相位后执行
+    \begin{equation}
+        \bm{\Theta}
+        \leftarrow
+        (\bm{\Theta}+\pi)\bmod 2\pi - \pi,
+    \end{equation}
+    把相位压回 $[-\pi,\pi)$；
+    \item 外层温度按
+    \begin{equation}
+        T_1,\ldots,T_L
+        =
+        \mathrm{geomspace}(T_{\mathrm{init}},T_{\mathrm{final}})
+    \end{equation}
+    逐步退火。
+\end{enumerate}
+
+温度退火的作用是让训练从平滑 surrogate 逐渐逼近硬判决结构。因为当 $T\to 0^+$ 时，
+\begin{equation}
+    T\log\sum_a e^{-D(a)/T}
+    \to
+    -\min_a D(a),
+\end{equation}
+所以 soft-SIC 会退化到 max-log / hard-SIC 的极限形式。
+
+\section{SIC 与 THP 的简单示例}
+这里用一个 $2\times 2$ 上三角示例说明：为什么当前 SIC 这条线不做发端 modulo，而 THP 这条线需要 modulo。
+
+\subsection{SIC：干扰在接收端消除，所以发端不需要 modulo}
+设等效上三角信道为
+\begin{equation}
+    \bm{R}
+    =
+    \begin{bmatrix}
+        2 & 1\\
+        0 & 2
+    \end{bmatrix},
+    \qquad
+    \bm{s}
+    =
+    \begin{bmatrix}
+        1\\
+        1
+    \end{bmatrix}.
+\end{equation}
+忽略噪声时，
+\begin{equation}
+    \bm{y}
+    =
+    \bm{R}\bm{s}
+    =
+    \begin{bmatrix}
+        3\\
+        2
+    \end{bmatrix}.
+\end{equation}
+这条链路里发射端发的仍然是原始符号 $\bm{s}$，没有任何递推，因此也没有 modulo。SIC 全部发生在接收端：
+\begin{equation}
+    \hat{s}_2 = y_2 / 2 = 1,
+\end{equation}
+\begin{equation}
+    \hat{s}_1 = (y_1 - 1\cdot \hat{s}_2)/2 = (3-1)/2 = 1.
+\end{equation}
+所以当前 SIC 的本质是\textbf{线性发射 + 接收端串行消除}。既然发射端没有做递推预消除，自然也不需要 modulo。
+
+\subsection{THP：干扰在发射端预消除，所以需要 modulo}
+若把同样的上三角耦合搬到发射端处理，就进入 THP。设归一化上三角为
+\begin{equation}
+    \bm{B}_1
+    =
+    \begin{bmatrix}
+        1 & 1.5\\
+        0 & 1
+    \end{bmatrix},
+    \qquad
+    \bm{s}
+    =
+    \begin{bmatrix}
+        1\\
+        -1
+    \end{bmatrix}.
+\end{equation}
+THP 递推为
+\begin{equation}
+    \widetilde{s}_2 = \mathcal{M}_{\tau}(-1) = -1,
+\end{equation}
+\begin{equation}
+    \widetilde{s}_1
+    =
+    \mathcal{M}_{\tau}\!\left(
+        1 - 1.5\cdot(-1)
+    \right)
+    =
+    \mathcal{M}_{\tau}(2.5).
+\end{equation}
+如果不做 modulo，第一层发射符号会因为递推而变大；modulo 的作用就是把它折回基本区间。例如当 $\tau=2$ 时，
+\begin{equation}
+    \widetilde{s}_1
+    =
+    \mathcal{M}_{2}(2.5)
+    =
+    0.5.
+\end{equation}
+这说明 THP 的本质是\textbf{发射端递推预消除 + modulo 控制幅度}。
+
+\paragraph{结论}
+所以当前代码里并不是“发射端用 SIC 但没做 modulo”，而是：
+\begin{enumerate}
+    \item `SIC` 分支本来就是接收端算法，发射端仍发原始 QAM 符号；
+    \item 只有当干扰递推被搬到发射端时，它才变成 `THP`，这时才需要 modulo。
+\end{enumerate}
+
+\section{Perfect CSI 下 SVD 与 GMD 的高低 SNR 证明}
+下面只保留这一个理论比较问题。设 perfect CSI 成立，即
+\begin{equation}
+    \bm{H}_k^{(\mathrm{tx})}
+    =
+    \bm{H}_k^{(\mathrm{rx})}
+    =
+    \bm{H}_k.
+\end{equation}
+
+记某用户 reduced channel 的前 $d$ 个奇异值为
+\begin{equation}
+    \sigma_{k,1}\ge\cdots\ge\sigma_{k,d}>0,
+\end{equation}
+并记几何平均为
+\begin{equation}
+    \delta_k
+    =
+    \left(
+        \prod_{i=1}^{d}\sigma_{k,i}
+    \right)^{1/d}.
+\end{equation}
+
+\subsection{低 SNR：SVD 通常强于 GMD}
+低 SNR 下，SVD 与 GMD 的一阶信号能量项相同，因为 GMD 只是对 SVD 基做右酉旋转，不改变 Frobenius 能量：
+\begin{equation}
+    \left\|
+        \bar{\bm{\Sigma}}_k\bm{\Omega}_k
+    \right\|_F^2
+    =
+    \left\|
+        \bar{\bm{\Sigma}}_k
+    \right\|_F^2.
+\end{equation}
+
+若把当前 hard-SIC / bit-wise GMI 下的每用户速率写成
+\begin{equation}
+    R_k^{(x)}(\gamma)
+    =
+    a_k\gamma
+    -
+    \xi_k^{(x)}\gamma^2
+    +
+    o(\gamma^2),
+    \qquad
+    x\in\{\mathrm{svd},\mathrm{gmd}\},
+\end{equation}
+则一阶系数 $a_k$ 对两者相同，差异来自二阶项。
+
+这里的核心原因是：
+\begin{enumerate}
+    \item SVD 对应的等效块是对角结构，不引入额外的用户内上三角串扰；
+    \item GMD 虽然把对角拉平，但其上三角一般非零；
+    \item 在低 SNR 下，这些额外串扰首先体现为二阶损失。
+\end{enumerate}
+
+因此通常有
+\begin{equation}
+    \xi_k^{(\mathrm{gmd})}
+    \ge
+    \xi_k^{(\mathrm{svd})},
+\end{equation}
+从而得到
+\begin{equation}
+    R_k^{(\mathrm{svd})}(\gamma)
+    \ge
+    R_k^{(\mathrm{gmd})}(\gamma),
+    \qquad
+    \gamma\downarrow 0.
+\end{equation}
+
+所以低 SNR 下 ``SVD 强于 GMD'' 的结论，来自低阶展开与二阶损失分析，\textbf{不是} AM-GM 不等式。
+
+\subsection{高 SNR 过渡区：GMD 可能反超}
+高 SNR 过渡区里，主导因素变成最弱层门限。对 SVD，
+\begin{equation}
+    g_{k,\min}^{(\mathrm{svd})}
+    =
+    \sigma_{k,d}.
+\end{equation}
+对 GMD，所有层都被拉到几何平均量级，因此
+\begin{equation}
+    g_{k,\min}^{(\mathrm{gmd})}
+    \approx
+    \delta_k.
+\end{equation}
+
+这时才用到 AM-GM。不等式给出
+\begin{equation}
+    \delta_k^2
+    =
+    \left(
+        \prod_{i=1}^{d}\sigma_{k,i}^2
+    \right)^{1/d}
+    \ge
+    \sigma_{k,d}^2.
+\end{equation}
+
+如果把 ``所有流都稳定解码'' 近似成最弱层跨过某个门限 $\gamma_{\mathrm{th}}$，则
+\begin{equation}
+    \gamma_{\mathrm{th},k}^{(\mathrm{svd})}
+    \approx
+    \frac{\gamma_{\mathrm{th}}}{\sigma_{k,d}^2},
+    \qquad
+    \gamma_{\mathrm{th},k}^{(\mathrm{gmd})}
+    \approx
+    \frac{\gamma_{\mathrm{th}}}{\delta_k^2}.
+\end{equation}
+由于 $\delta_k^2\ge \sigma_{k,d}^2$，因此
+\begin{equation}
+    \gamma_{\mathrm{th},k}^{(\mathrm{gmd})}
+    \le
+    \gamma_{\mathrm{th},k}^{(\mathrm{svd})}.
+\end{equation}
+
+于是就可能出现一个高 SNR 过渡区间，使得 GMD 比 SVD 更早跨过最弱层门限，从而出现
+\begin{equation}
+    R_k^{(\mathrm{gmd})}(\gamma)
+    >
+    R_k^{(\mathrm{svd})}(\gamma)
+\end{equation}
+的现象。再往更高 SNR 走，有限星座速率都逐渐饱和，二者差距又会缩小。
+
+\paragraph{结论}
+\begin{quote}
+低 SNR 下 SVD 通常强于 GMD；高 SNR 过渡区里，GMD 可能由于最弱流被拉平而反超；AM-GM 只用于解释后者。
+\end{quote}
+
+\section{与高斯信息参考对比}
+下面给出两张参考图。黑色虚线表示 \code{AO Gaussian Info} 曲线，其余彩色曲线仍然是当前有限星座、当前接收机口径下的性能。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{../classical/results/perfect_ao_gaussian_info_0to50.png}
+    \caption{Perfect CSI 下各方法与 \code{AO Gaussian Info} 的对比。展示区间为 $0$ dB 到 $50$ dB，纵轴截到 $50$ bits/s/Hz。}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{../classical/results/mmse_fullcov_ao_gaussian_info_0to50.png}
+    \caption{非完美 CSI（\code{mmse\_fullcov}）下各方法与 \code{AO Gaussian Info} 的对比。}
+\end{figure}
+
+\end{document}

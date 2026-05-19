@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1700" viewBox="0 0 1200 1700">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#111"/>
+    </marker>
+    <style>
+      text { font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif; fill: #111; }
+      .title { font-size: 34px; font-weight: 700; }
+      .box-title { font-size: 25px; font-weight: 700; }
+      .box-text { font-size: 22px; }
+      .small { font-size: 20px; }
+      .box { fill: #fff; stroke: #111; stroke-width: 2.5; rx: 0; ry: 0; }
+      .dashed { fill: #fff; stroke: #111; stroke-width: 2.5; stroke-dasharray: 10 7; rx: 0; ry: 0; }
+      .arrow { stroke: #111; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .line { stroke: #111; stroke-width: 2.2; fill: none; }
+    </style>
+  </defs>
+
+  <text x="600" y="64" text-anchor="middle" class="title">图1  多用户 MIMO-BICM 混合预编码选择方法流程图</text>
+
+  <rect x="260" y="110" width="680" height="92" class="box"/>
+  <text x="600" y="146" text-anchor="middle" class="box-title">S1 获取系统参数与多用户信道</text>
+  <text x="600" y="180" text-anchor="middle" class="box-text">H₁,...,H_K；N_t、N_r、N_RF、d、M、SNR</text>
+
+  <path d="M600 202 L600 252" class="arrow"/>
+
+  <rect x="210" y="252" width="780" height="135" class="box"/>
+  <text x="600" y="288" text-anchor="middle" class="box-title">S2 发射端 CSI 获取</text>
+  <text x="600" y="323" text-anchor="middle" class="box-text">由离线信道样本估计均值与全协方差矩阵</text>
+  <text x="600" y="356" text-anchor="middle" class="box-text">结合重复单位矩阵导频执行全协方差 LMMSE 估计</text>
+
+  <path d="M600 387 L600 437" class="arrow"/>
+
+  <rect x="210" y="437" width="780" height="120" class="box"/>
+  <text x="600" y="474" text-anchor="middle" class="box-title">S3 构建共享模拟预编码矩阵 F_RF</text>
+  <text x="600" y="509" text-anchor="middle" class="box-text">对各用户 CSI 做 SVD，提取右奇异向量相位</text>
+  <text x="600" y="540" text-anchor="middle" class="box-text">形成满足恒模约束的共享 RF 预编码</text>
+
+  <path d="M600 557 L600 607" class="arrow"/>
+
+  <rect x="210" y="607" width="780" height="105" class="box"/>
+  <text x="600" y="644" text-anchor="middle" class="box-title">S4 计算各用户等效信道</text>
+  <text x="600" y="681" text-anchor="middle" class="box-text">G_k = H_k F_RF，k = 1,...,K</text>
+
+  <path d="M600 712 L600 762" class="arrow"/>
+
+  <rect x="210" y="762" width="780" height="128" class="box"/>
+  <text x="600" y="799" text-anchor="middle" class="box-title">S5 构建块对角化零空间与降维等效信道</text>
+  <text x="600" y="834" text-anchor="middle" class="box-text">堆叠其他用户等效信道，求零空间基 N_k</text>
+  <text x="600" y="867" text-anchor="middle" class="box-text">得到降维等效信道 G̃_k = G_k N_k</text>
+
+  <path d="M600 890 L600 940" class="arrow"/>
+
+  <rect x="80" y="940" width="1040" height="220" class="box"/>
+  <text x="600" y="978" text-anchor="middle" class="box-title">S6 生成结构化混合预编码候选</text>
+  <rect x="125" y="1015" width="210" height="84" class="box"/>
+  <text x="230" y="1050" text-anchor="middle" class="box-text">SVD</text>
+  <text x="230" y="1080" text-anchor="middle" class="small">数字预编码</text>
+  <rect x="365" y="1015" width="210" height="84" class="box"/>
+  <text x="470" y="1050" text-anchor="middle" class="box-text">GMD</text>
+  <text x="470" y="1080" text-anchor="middle" class="small">数字预编码</text>
+  <rect x="605" y="1015" width="210" height="84" class="box"/>
+  <text x="710" y="1050" text-anchor="middle" class="box-text">UCD</text>
+  <text x="710" y="1080" text-anchor="middle" class="small">数字预编码</text>
+  <rect x="845" y="1015" width="210" height="84" class="box"/>
+  <text x="950" y="1050" text-anchor="middle" class="box-text">GMD+THP</text>
+  <text x="950" y="1080" text-anchor="middle" class="small">模递推候选</text>
+  <text x="600" y="1138" text-anchor="middle" class="box-text">拼接各用户数字块并对 F_RF F_BB 执行总功率归一化</text>
+
+  <path d="M600 1160 L600 1210" class="arrow"/>
+
+  <rect x="210" y="1210" width="780" height="150" class="box"/>
+  <text x="600" y="1248" text-anchor="middle" class="box-title">S7 接收端性能评价</text>
+  <text x="600" y="1284" text-anchor="middle" class="box-text">线性候选：并行检测或 SIC 下的 BICM-GMI / BER</text>
+  <text x="600" y="1318" text-anchor="middle" class="box-text">THP 候选：对角等化、模折叠、周期复制星座 LLR</text>
+  <text x="600" y="1348" text-anchor="middle" class="small">不同候选使用相同符号样本与噪声样本</text>
+
+  <path d="M600 1360 L600 1410" class="arrow"/>
+
+  <rect x="210" y="1410" width="780" height="112" class="box"/>
+  <text x="600" y="1448" text-anchor="middle" class="box-title">S8 选择目标混合预编码矩阵</text>
+  <text x="600" y="1484" text-anchor="middle" class="box-text">依据和速率、误码率、泄漏功率或用户公平性排序</text>
+
+  <path d="M600 1522 L600 1572" class="arrow"/>
+
+  <rect x="260" y="1572" width="680" height="80" class="box"/>
+  <text x="600" y="1608" text-anchor="middle" class="box-title">输出目标 F_RF 与 F_BB</text>
+  <text x="600" y="1638" text-anchor="middle" class="box-text">用于多用户 MIMO-BICM 下行传输</text>
+
+  <rect x="35" y="1210" width="130" height="150" class="dashed"/>
+  <text x="100" y="1265" text-anchor="middle" class="small">可选</text>
+  <text x="100" y="1295" text-anchor="middle" class="small">联合软优化</text>
+  <text x="100" y="1325" text-anchor="middle" class="small">初始化</text>
+
+  <path d="M165 1285 L210 1285" class="arrow"/>
+</svg>
