@@ -1,0 +1,72 @@
+[
+  {
+    "num_users": 2,
+    "num_tx_antennas": 16,
+    "num_rx_antennas": 4,
+    "num_rf_chains": 8,
+    "num_streams_per_user": 2
+  },
+  {
+    "num_users": 2,
+    "num_tx_antennas": 16,
+    "num_rx_antennas": 4,
+    "num_rf_chains": 8,
+    "num_streams_per_user": 3
+  },
+  {
+    "num_users": 2,
+    "num_tx_antennas": 16,
+    "num_rx_antennas": 4,
+    "num_rf_chains": 8,
+    "num_streams_per_user": 4
+  },
+  {
+    "num_users": 2,
+    "num_tx_antennas": 20,
+    "num_rx_antennas": 4,
+    "num_rf_chains": 10,
+    "num_streams_per_user": 3
+  },
+  {
+    "num_users": 2,
+    "num_tx_antennas": 24,
+    "num_rx_antennas": 6,
+    "num_rf_chains": 12,
+    "num_streams_per_user": 4
+  },
+  {
+    "num_users": 3,
+    "num_tx_antennas": 18,
+    "num_rx_antennas": 2,
+    "num_rf_chains": 9,
+    "num_streams_per_user": 2
+  },
+  {
+    "num_users": 3,
+    "num_tx_antennas": 24,
+    "num_rx_antennas": 4,
+    "num_rf_chains": 12,
+    "num_streams_per_user": 2
+  },
+  {
+    "num_users": 3,
+    "num_tx_antennas": 24,
+    "num_rx_antennas": 4,
+    "num_rf_chains": 12,
+    "num_streams_per_user": 3
+  },
+  {
+    "num_users": 4,
+    "num_tx_antennas": 24,
+    "num_rx_antennas": 2,
+    "num_rf_chains": 12,
+    "num_streams_per_user": 2
+  },
+  {
+    "num_users": 4,
+    "num_tx_antennas": 32,
+    "num_rx_antennas": 3,
+    "num_rf_chains": 16,
+    "num_streams_per_user": 2
+  }
+]
