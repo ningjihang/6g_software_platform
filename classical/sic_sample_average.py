@@ -52,3 +52,25 @@ def build_multiuser_sample_average(
             )
         batches.append(tuple(user_batches))
     return MultiUserSampleAverage(batches=tuple(batches))
+
+
+# Backward-compatible aliases for the older AO implementation.
+MultiUserSICSampleAverage = MultiUserSampleAverage
+
+
+def build_multiuser_sic_sample_average(
+    env,
+    bits_per_symbol: int,
+    num_samples: int,
+    num_repeats: int,
+    base_seed: int,
+    labeling: str = "gray_standard",
+) -> MultiUserSICSampleAverage:
+    return build_multiuser_sample_average(
+        env=env,
+        bits_per_symbol=bits_per_symbol,
+        num_samples=num_samples,
+        num_repeats=num_repeats,
+        base_seed=base_seed,
+        labeling=labeling,
+    )

@@ -579,8 +579,248 @@ def estimate_bicm_gmi_streamwise(
             bits_per_symbol=bits_per_symbol,
             num_samples=num_samples,
             seed=None if seed is None else seed + stream_idx,
-        )
+    )
     return float(total_gmi)
+
+
+def estimate_bicm_gmi_sic_from_received(
+    upper_triangular_channel: np.ndarray,
+    snr_per_stream: float,
+    bits_per_symbol: int,
+    symbol_indices: np.ndarray,
+    received_samples: np.ndarray,
+    labeling: str = "gray_standard",
+) -> float:
+    """Estimate BICM-GMI for SIC detection from projected received samples."""
+
+    num_streams = upper_triangular_channel.shape[1]
+    symbols, bits = get_constellation(bits_per_symbol, labeling=labeling)
+    symbol_indices = np.asarray(symbol_indices, dtype=int)
+    received_samples = np.asarray(received_samples, dtype=complex)
+
+    if symbol_indices.ndim != 2:
+        raise ValueError("symbol_indices must have shape (num_samples, num_streams).")
+    if symbol_indices.shape[1] != num_streams:
+        raise ValueError(
+            "symbol_indices do not match the upper-triangular channel width: "
+            f"{symbol_indices.shape[1]} != {num_streams}."
+        )
+    if received_samples.shape != symbol_indices.shape:
+        raise ValueError(
+            "received_samples must match symbol_indices shape after receiver projection: "
+            f"{received_samples.shape} != {symbol_indices.shape}."
+        )
+
+    bit_masks = {}
+    for bit_idx in range(bits_per_symbol):
+        bit_values = bits[:, bit_idx]
+        mask_one = bit_values == 1
+        mask_zero = ~mask_one
+        bit_masks[bit_idx] = (mask_zero, mask_one)
+
+    transmitted_bits = bits[symbol_indices]
+    scaled_channel = np.sqrt(snr_per_stream) * upper_triangular_channel
+    ideal_rate = float(num_streams * bits_per_symbol)
+    loss_sum = 0.0
+    total_samples = symbol_indices.shape[0]
+
+    for sample_idx in range(total_samples):
+        received = received_samples[sample_idx]
+        sample_bits = transmitted_bits[sample_idx]
+        detected_symbols = np.zeros(num_streams, dtype=complex)
+
+        for stream_idx in range(num_streams - 1, -1, -1):
+            interference = 0.0j
+            if stream_idx + 1 < num_streams:
+                interference = np.dot(
+                    scaled_channel[stream_idx, stream_idx + 1 :],
+                    detected_symbols[stream_idx + 1 :],
+                )
+            residual = received[stream_idx] - interference
+            gain = scaled_channel[stream_idx, stream_idx]
+            distances = np.abs(residual - gain * symbols) ** 2
+            hard_index = int(np.argmin(distances))
+            detected_symbols[stream_idx] = symbols[hard_index]
+
+            for bit_idx in range(bits_per_symbol):
+                mask_zero, mask_one = bit_masks[bit_idx]
+                llr = stable_logsumexp(-distances[mask_one]) - stable_logsumexp(-distances[mask_zero])
+                bit_value = sample_bits[stream_idx, bit_idx]
+                signed_llr = (2 * bit_value - 1) * llr
+                loss_sum += stable_binary_logloss_from_signed_llr(signed_llr)
+
+    return max(0.0, ideal_rate - loss_sum / max(total_samples, 1))
+
+
+def estimate_bit_error_rate_sic_from_received(
+    upper_triangular_channel: np.ndarray,
+    snr_per_stream: float,
+    bits_per_symbol: int,
+    symbol_indices: np.ndarray,
+    received_samples: np.ndarray,
+    labeling: str = "gray_standard",
+) -> float:
+    """Estimate BER for SIC detection from projected received samples."""
+
+    num_streams = upper_triangular_channel.shape[1]
+    symbols, bits = get_constellation(bits_per_symbol, labeling=labeling)
+    symbol_indices = np.asarray(symbol_indices, dtype=int)
+    received_samples = np.asarray(received_samples, dtype=complex)
+
+    if symbol_indices.ndim != 2:
+        raise ValueError("symbol_indices must have shape (num_samples, num_streams).")
+    if symbol_indices.shape[1] != num_streams:
+        raise ValueError(
+            "symbol_indices do not match the upper-triangular channel width: "
+            f"{symbol_indices.shape[1]} != {num_streams}."
+        )
+    if received_samples.shape != symbol_indices.shape:
+        raise ValueError(
+            "received_samples must match symbol_indices shape after receiver projection: "
+            f"{received_samples.shape} != {symbol_indices.shape}."
+        )
+
+    transmitted_bits = bits[symbol_indices]
+    scaled_channel = np.sqrt(snr_per_stream) * upper_triangular_channel
+    total_samples = symbol_indices.shape[0]
+    total_bits = int(total_samples * num_streams * bits_per_symbol)
+    bit_errors = 0
+
+    for sample_idx in range(total_samples):
+        received = received_samples[sample_idx]
+        detected_indices = np.zeros(num_streams, dtype=int)
+
+        for stream_idx in range(num_streams - 1, -1, -1):
+            interference = 0.0j
+            if stream_idx + 1 < num_streams:
+                interference = np.dot(
+                    scaled_channel[stream_idx, stream_idx + 1 :],
+                    symbols[detected_indices[stream_idx + 1 :]],
+                )
+            residual = received[stream_idx] - interference
+            gain = scaled_channel[stream_idx, stream_idx]
+            distances = np.abs(residual - gain * symbols) ** 2
+            detected_indices[stream_idx] = int(np.argmin(distances))
+
+        detected_bits = bits[detected_indices]
+        bit_errors += int(np.count_nonzero(detected_bits != transmitted_bits[sample_idx]))
+
+    return float(bit_errors / max(total_bits, 1))
+
+
+def estimate_bicm_gmi_parallel_from_received(
+    diagonal_channel: np.ndarray,
+    snr_per_stream: float,
+    bits_per_symbol: int,
+    symbol_indices: np.ndarray,
+    received_samples: np.ndarray,
+    labeling: str = "gray_standard",
+) -> float:
+    """Estimate BICM-GMI for parallel streams without SIC."""
+
+    diagonal_channel = np.asarray(diagonal_channel, dtype=complex)
+    if diagonal_channel.ndim == 2:
+        diag_entries = np.diag(diagonal_channel)
+    elif diagonal_channel.ndim == 1:
+        diag_entries = diagonal_channel
+    else:
+        raise ValueError("diagonal_channel must be a diagonal matrix or a 1-D diagonal vector.")
+
+    symbols, bits = get_constellation(bits_per_symbol, labeling=labeling)
+    symbol_indices = np.asarray(symbol_indices, dtype=int)
+    received_samples = np.asarray(received_samples, dtype=complex)
+
+    if symbol_indices.ndim != 2:
+        raise ValueError("symbol_indices must have shape (num_samples, num_streams).")
+    if symbol_indices.shape[1] != len(diag_entries):
+        raise ValueError(
+            "symbol_indices do not match the diagonal channel width: "
+            f"{symbol_indices.shape[1]} != {len(diag_entries)}."
+        )
+    if received_samples.shape != symbol_indices.shape:
+        raise ValueError(
+            "received_samples must match symbol_indices shape after receiver projection: "
+            f"{received_samples.shape} != {symbol_indices.shape}."
+        )
+
+    bit_masks = {}
+    for bit_idx in range(bits_per_symbol):
+        bit_values = bits[:, bit_idx]
+        mask_one = bit_values == 1
+        mask_zero = ~mask_one
+        bit_masks[bit_idx] = (mask_zero, mask_one)
+
+    transmitted_bits = bits[symbol_indices]
+    sqrt_snr = float(np.sqrt(snr_per_stream))
+    ideal_rate = float(symbol_indices.shape[1] * bits_per_symbol)
+    loss_sum = 0.0
+    total_samples = symbol_indices.shape[0]
+
+    for sample_idx in range(total_samples):
+        received = received_samples[sample_idx]
+        sample_bits = transmitted_bits[sample_idx]
+        for stream_idx, gain in enumerate(diag_entries):
+            distances = np.abs(received[stream_idx] - sqrt_snr * gain * symbols) ** 2
+            for bit_idx in range(bits_per_symbol):
+                mask_zero, mask_one = bit_masks[bit_idx]
+                llr = stable_logsumexp(-distances[mask_one]) - stable_logsumexp(-distances[mask_zero])
+                bit_value = sample_bits[stream_idx, bit_idx]
+                signed_llr = (2 * bit_value - 1) * llr
+                loss_sum += stable_binary_logloss_from_signed_llr(signed_llr)
+
+    return max(0.0, ideal_rate - loss_sum / max(total_samples, 1))
+
+
+def estimate_bit_error_rate_parallel_from_received(
+    diagonal_channel: np.ndarray,
+    snr_per_stream: float,
+    bits_per_symbol: int,
+    symbol_indices: np.ndarray,
+    received_samples: np.ndarray,
+    labeling: str = "gray_standard",
+) -> float:
+    """Estimate BER for parallel per-stream detection from projected samples."""
+
+    diagonal_channel = np.asarray(diagonal_channel, dtype=complex)
+    if diagonal_channel.ndim == 2:
+        diag_entries = np.diag(diagonal_channel)
+    elif diagonal_channel.ndim == 1:
+        diag_entries = diagonal_channel
+    else:
+        raise ValueError("diagonal_channel must be a diagonal matrix or a 1-D diagonal vector.")
+
+    symbols, bits = get_constellation(bits_per_symbol, labeling=labeling)
+    symbol_indices = np.asarray(symbol_indices, dtype=int)
+    received_samples = np.asarray(received_samples, dtype=complex)
+
+    if symbol_indices.ndim != 2:
+        raise ValueError("symbol_indices must have shape (num_samples, num_streams).")
+    if symbol_indices.shape[1] != len(diag_entries):
+        raise ValueError(
+            "symbol_indices do not match the diagonal channel width: "
+            f"{symbol_indices.shape[1]} != {len(diag_entries)}."
+        )
+    if received_samples.shape != symbol_indices.shape:
+        raise ValueError(
+            "received_samples must match symbol_indices shape after receiver projection: "
+            f"{received_samples.shape} != {symbol_indices.shape}."
+        )
+
+    transmitted_bits = bits[symbol_indices]
+    sqrt_snr = float(np.sqrt(snr_per_stream))
+    total_samples = symbol_indices.shape[0]
+    total_bits = int(total_samples * len(diag_entries) * bits_per_symbol)
+    bit_errors = 0
+
+    for sample_idx in range(total_samples):
+        received = received_samples[sample_idx]
+        sample_bits = transmitted_bits[sample_idx]
+        for stream_idx, gain in enumerate(diag_entries):
+            distances = np.abs(received[stream_idx] - sqrt_snr * gain * symbols) ** 2
+            hard_index = int(np.argmin(distances))
+            bit_errors += int(np.count_nonzero(bits[hard_index] != sample_bits[stream_idx]))
+
+    return float(bit_errors / max(total_bits, 1))
 
 
 @lru_cache(maxsize=32)

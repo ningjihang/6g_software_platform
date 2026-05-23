@@ -60,6 +60,7 @@ class DigitalStructuredPrecoder:
         h_eff: np.ndarray,
         snr_per_stream: float,
         strategy: str = "gmd",
+        alpha_override: float | None = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """?? design precoder ???"""
         _, singular_values, vh_eff = svd(h_eff, full_matrices=False)
@@ -70,6 +71,7 @@ class DigitalStructuredPrecoder:
             singular_values=singular_values,
             snr_per_stream=snr_per_stream,
             strategy=strategy,
+            alpha_override=alpha_override,
         )
         rho_realized = self.compute_stream_snr(h_eff, v_d, snr_per_stream)
         return v_d, rho_realized, rho_target
@@ -80,6 +82,7 @@ class DigitalStructuredPrecoder:
         singular_values: np.ndarray,
         snr_per_stream: float,
         strategy: str = "gmd",
+        alpha_override: float | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Design the right-unitary digital block from a reduced-channel SVD."""
 
@@ -94,6 +97,7 @@ class DigitalStructuredPrecoder:
                 v_eff=v_eff,
                 singular_values=singular_values,
                 snr_per_stream=snr_per_stream,
+                alpha_override=alpha_override,
             )
 
         rho_target = self.build_target_rho(mu, strategy)
@@ -168,6 +172,7 @@ class DigitalStructuredPrecoder:
         v_eff: np.ndarray,
         singular_values: np.ndarray,
         snr_per_stream: float,
+        alpha_override: float | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Construct UCD using MMSE augmentation, waterfilling, and GMD equalization."""
 
@@ -178,7 +183,10 @@ class DigitalStructuredPrecoder:
             )
 
         num_streams = len(singular_values)
-        alpha = 1.0 / max(float(snr_per_stream), 1e-12)
+        if alpha_override is None:
+            alpha = 1.0 / max(float(snr_per_stream), 1e-12)
+        else:
+            alpha = max(float(alpha_override), 1e-12)
         power_loading = self._build_ucd_power_loading(
             singular_values=singular_values,
             alpha=alpha,
@@ -229,6 +237,7 @@ class DigitalStructuredPrecoder:
         singular_values: np.ndarray,
         snr_per_stream: float,
         tx_scale: float = 1.0,
+        alpha_override: float | None = None,
     ) -> UCDTransceiverBlock:
         """Return the UCD transmit/receive factors following the original UCD construction."""
 
@@ -239,7 +248,10 @@ class DigitalStructuredPrecoder:
             )
 
         num_streams = len(singular_values)
-        alpha = 1.0 / max(float(snr_per_stream), 1e-12)
+        if alpha_override is None:
+            alpha = 1.0 / max(float(snr_per_stream), 1e-12)
+        else:
+            alpha = max(float(alpha_override), 1e-12)
         power_loading = self._build_ucd_power_loading(
             singular_values=singular_values,
             alpha=alpha,

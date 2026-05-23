@@ -6,8 +6,11 @@ from scipy.linalg import svd
 
 from analog_precoder import AnalogPrecoder
 from bicm_metrics import (
+    estimate_bicm_gmi_sic_from_received,
     estimate_bicm_gmi_thp_from_received,
+    estimate_bit_error_rate_sic_from_received,
     estimate_bit_error_rate_thp_from_received,
+    estimate_scalar_bicm_gmi,
     get_constellation,
 )
 from channel_model import ChannelModel
@@ -61,7 +64,7 @@ class MultiUserSimulationEnvironment:
         num_streams_per_user: int,
         channel_type: str = "cdl-a",
         digital_power_constraint: float | None = None,
-        ucd_waterfill: bool = True,
+        ucd_waterfill: bool = False,
         ucd_min_power_loading: float = 0.0,
     ):
         """????????????"""
@@ -175,6 +178,13 @@ class MultiUserSimulationEnvironment:
             )
         return basis
 
+    def build_bd_null_basis(self, effective_channels: list[np.ndarray], user_index: int) -> np.ndarray:
+        """Compatibility alias for older AO optimizers."""
+        return self.build_bd_digital_basis(
+            effective_channels=effective_channels,
+            user_index=user_index,
+        )
+
     def qr_factors_with_positive_diagonal(self, channel_block: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """?? qr factors with positive diagonal ???"""
         q_factor, r_factor = np.linalg.qr(channel_block, mode="reduced")
@@ -213,6 +223,29 @@ class MultiUserSimulationEnvironment:
 
         m_axis = int(np.sqrt(2**bits_per_symbol))
         return float(m_axis * 2.0 / np.sqrt((2.0 / 3.0) * (2**bits_per_symbol - 1)))
+
+    def _estimate_scalar_symbol_error_rate(
+        self,
+        channel_gain: complex,
+        snr_per_stream: float,
+        bits_per_symbol: int,
+        num_samples: int = 256,
+        seed: int | None = None,
+    ) -> float:
+        symbols, _ = get_constellation(bits_per_symbol)
+        rng = np.random.default_rng(seed)
+        sqrt_snr = float(np.sqrt(snr_per_stream))
+        errors = 0
+        for _ in range(num_samples):
+            index = int(rng.integers(0, len(symbols)))
+            transmitted_symbol = symbols[index]
+            noise = (rng.standard_normal() + 1j * rng.standard_normal()) / np.sqrt(2.0)
+            received = sqrt_snr * channel_gain * transmitted_symbol + noise
+            distances = np.abs(received - sqrt_snr * channel_gain * symbols) ** 2
+            hard_index = int(np.argmin(distances))
+            if hard_index != index:
+                errors += 1
+        return float(errors / max(num_samples, 1))
 
     def build_structured_digital_chain(
         self,
@@ -263,6 +296,9 @@ class MultiUserSimulationEnvironment:
                     v_eff=v_eff,
                     singular_values=singular_values,
                     snr_per_stream=snr_per_stream,
+                    # Original UCD uses alpha=L/SNR. Here snr_per_stream is SNR/(K*L),
+                    # so multiplying by K restores the per-user stream SNR SNR/L.
+                    alpha_override=1.0 / max(float(snr_per_stream) * self.num_users, 1e-12),
                 )
                 f_k_local = ucd_block.p_ucd
                 q_local = ucd_block.w_ucd
@@ -291,6 +327,22 @@ class MultiUserSimulationEnvironment:
             f_rf_blocks=f_rf_blocks,
         )
 
+    def build_structured_digital_precoder(
+        self,
+        user_channels: np.ndarray,
+        f_rf: np.ndarray,
+        snr_per_stream: float,
+        strategy: str,
+    ) -> tuple[np.ndarray, list[np.ndarray], list[np.ndarray]]:
+        """Compatibility wrapper returning the legacy tuple layout."""
+        chain = self.build_structured_digital_chain(
+            user_channels=user_channels,
+            f_rf=f_rf,
+            snr_per_stream=snr_per_stream,
+            strategy=strategy,
+        )
+        return chain.f_bb, chain.q_chains, chain.r_chains
+
     def split_user_blocks(self, f_bb: np.ndarray) -> list[np.ndarray]:
         """?????user blocks?"""
         user_blocks = []
@@ -300,6 +352,61 @@ class MultiUserSimulationEnvironment:
             user_blocks.append(f_bb[:, start_col:end_col])
             start_col = end_col
         return user_blocks
+
+    def evaluate_precoder_gaussian_logdet_sum_rate(
+        self,
+        user_channels: np.ndarray,
+        f_rf: np.ndarray,
+        f_bb: np.ndarray,
+        snr_per_stream: float,
+    ) -> float:
+        """Evaluate a same-structure Gaussian log-det sum-rate on the final hybrid+BD precoder.
+
+        This uses the actual hybrid precoder blocks F_k = F_RF @ F_BB,k and computes
+        per-user Gaussian achievable rates with interference treated as colored noise.
+        """
+
+        user_channels = np.asarray(user_channels, dtype=complex)
+        f_rf = np.asarray(f_rf, dtype=complex)
+        f_bb = np.asarray(f_bb, dtype=complex)
+        user_blocks = self.split_user_blocks(f_bb)
+        full_user_blocks = [f_rf @ block for block in user_blocks]
+
+        total_rate = 0.0
+        for rx_user in range(self.num_users):
+            h_k = user_channels[rx_user]
+            desired_precoder = full_user_blocks[rx_user]
+            desired_covariance = (
+                float(snr_per_stream)
+                * h_k
+                @ desired_precoder
+                @ desired_precoder.conj().T
+                @ h_k.conj().T
+            )
+
+            interference_covariance = np.eye(self.num_rx_antennas, dtype=complex)
+            for tx_user in range(self.num_users):
+                if tx_user == rx_user:
+                    continue
+                interference_precoder = full_user_blocks[tx_user]
+                interference_covariance += (
+                    float(snr_per_stream)
+                    * h_k
+                    @ interference_precoder
+                    @ interference_precoder.conj().T
+                    @ h_k.conj().T
+                )
+
+            total_covariance = interference_covariance + desired_covariance
+            sign_total, logdet_total = np.linalg.slogdet(total_covariance)
+            sign_interference, logdet_interference = np.linalg.slogdet(interference_covariance)
+            if sign_total <= 0.0 or sign_interference <= 0.0:
+                raise ValueError(
+                    "Gaussian log-det rate encountered a non-positive covariance determinant."
+                )
+            total_rate += float((logdet_total - logdet_interference) / np.log(2.0))
+
+        return total_rate
 
     def evaluate_precoder_current_receiver_average_fixed_chain(
         self,
@@ -416,6 +523,195 @@ class MultiUserSimulationEnvironment:
             user_rho=user_rho,
             leakage_matrix=leakage_matrix,
             offdiag_to_desired=offdiag_to_desired,
+        )
+
+    def evaluate_precoder_current_receiver_average_parallel(
+        self,
+        user_channels: np.ndarray,
+        f_rf: np.ndarray,
+        f_bb: np.ndarray,
+        snr_per_stream: float,
+        bits_per_symbol: int,
+        sample_average,
+        labeling: str = "gray_standard",
+    ) -> ReceiverAverageEvaluation:
+        """Evaluate a precoder with parallel per-stream detection and no SIC.
+
+        This is used for the SVD branch, where the natural receive model is a
+        diagonalized set of parallel streams after the left-unitary projection.
+        """
+
+        del sample_average, labeling
+        effective_channels = self.build_effective_channels(user_channels, f_rf)
+        user_blocks = self.split_user_blocks(f_bb)
+
+        leakage_matrix = np.zeros((self.num_users, self.num_users), dtype=float)
+        user_rho = []
+        user_rates = np.zeros(self.num_users, dtype=float)
+        user_bers = np.zeros(self.num_users, dtype=float)
+
+        for rx_user in range(self.num_users):
+            desired_block = effective_channels[rx_user] @ user_blocks[rx_user]
+            q_factor, triangular_channel = self.qr_factors_with_positive_diagonal(desired_block)
+            diag_entries = np.diag(triangular_channel)
+            rho_values = (np.abs(diag_entries) ** 2) * float(snr_per_stream)
+            user_rho.append(rho_values)
+
+            for tx_user in range(self.num_users):
+                leakage_block = effective_channels[rx_user] @ user_blocks[tx_user]
+                leakage_matrix[rx_user, tx_user] = float(np.linalg.norm(leakage_block, "fro") ** 2)
+
+            rate_sum = 0.0
+            ber_sum = 0.0
+            for stream_idx, gain in enumerate(diag_entries):
+                rate_sum += estimate_scalar_bicm_gmi(
+                    channel_gain=gain,
+                    snr_per_stream=snr_per_stream,
+                    bits_per_symbol=bits_per_symbol,
+                    num_samples=256,
+                    seed=12345 + 97 * rx_user + stream_idx,
+                )
+                ber_sum += self._estimate_scalar_symbol_error_rate(
+                    channel_gain=gain,
+                    snr_per_stream=snr_per_stream,
+                    bits_per_symbol=bits_per_symbol,
+                    num_samples=256,
+                    seed=22345 + 97 * rx_user + stream_idx,
+                )
+            user_rates[rx_user] = rate_sum
+            user_bers[rx_user] = ber_sum / max(len(diag_entries), 1)
+
+        desired_power = float(np.trace(leakage_matrix))
+        offdiag_power = float(np.sum(leakage_matrix) - desired_power)
+        offdiag_to_desired = offdiag_power / max(desired_power, 1e-12)
+
+        return ReceiverAverageEvaluation(
+            sum_rate=float(np.sum(user_rates)),
+            sum_rate_std=0.0,
+            bit_error_rate=float(np.mean(user_bers)),
+            user_rates=user_rates,
+            user_bit_error_rates=user_bers,
+            user_rho=user_rho,
+            leakage_matrix=leakage_matrix,
+            offdiag_to_desired=offdiag_to_desired,
+        )
+
+    def evaluate_precoder_current_receiver_average(
+        self,
+        user_channels: np.ndarray,
+        f_rf: np.ndarray,
+        f_bb: np.ndarray,
+        snr_per_stream: float,
+        bits_per_symbol: int,
+        sample_average,
+        labeling: str = "gray_standard",
+    ) -> ReceiverAverageEvaluation:
+        """Evaluate a precoder with SIC detection on the projected upper-triangular channel."""
+
+        del labeling
+        symbols, _ = get_constellation(bits_per_symbol)
+        effective_channels = self.build_effective_channels(user_channels, f_rf)
+        user_blocks = self.split_user_blocks(f_bb)
+
+        leakage_matrix = np.zeros((self.num_users, self.num_users), dtype=float)
+        rotated_blocks: list[list[np.ndarray]] = []
+        triangular_channels = []
+        user_rho = []
+
+        for rx_user in range(self.num_users):
+            desired_block = effective_channels[rx_user] @ user_blocks[rx_user]
+            q_factor, triangular_channel = self.qr_factors_with_positive_diagonal(desired_block)
+            triangular_channels.append(triangular_channel)
+            user_rho.append((np.abs(np.diag(triangular_channel)) ** 2) * float(snr_per_stream))
+
+            rotated_user_blocks = []
+            for tx_user in range(self.num_users):
+                leakage_block = effective_channels[rx_user] @ user_blocks[tx_user]
+                leakage_matrix[rx_user, tx_user] = float(np.linalg.norm(leakage_block, "fro") ** 2)
+                rotated_user_blocks.append(q_factor.conj().T @ leakage_block)
+            rotated_blocks.append(rotated_user_blocks)
+
+        desired_power = float(np.trace(leakage_matrix))
+        offdiag_power = float(np.sum(leakage_matrix) - desired_power)
+        offdiag_to_desired = offdiag_power / max(desired_power, 1e-12)
+
+        repeat_sum_rates = np.zeros(sample_average.num_repeats, dtype=float)
+        user_rate_accum = np.zeros(self.num_users, dtype=float)
+        user_ber_accum = np.zeros(self.num_users, dtype=float)
+        sqrt_snr = float(np.sqrt(snr_per_stream))
+
+        for repeat_idx, user_batches in enumerate(sample_average.batches):
+            transmitted_symbols = [symbols[batch.symbol_indices] for batch in user_batches]
+            for rx_user in range(self.num_users):
+                received = np.asarray(user_batches[rx_user].noise, dtype=complex).copy()
+                for tx_user in range(self.num_users):
+                    received += sqrt_snr * (
+                        transmitted_symbols[tx_user] @ rotated_blocks[rx_user][tx_user].T
+                    )
+                rate_value = estimate_bicm_gmi_sic_from_received(
+                    upper_triangular_channel=triangular_channels[rx_user],
+                    snr_per_stream=snr_per_stream,
+                    bits_per_symbol=bits_per_symbol,
+                    symbol_indices=user_batches[rx_user].symbol_indices,
+                    received_samples=received,
+                )
+                ber_value = estimate_bit_error_rate_sic_from_received(
+                    upper_triangular_channel=triangular_channels[rx_user],
+                    snr_per_stream=snr_per_stream,
+                    bits_per_symbol=bits_per_symbol,
+                    symbol_indices=user_batches[rx_user].symbol_indices,
+                    received_samples=received,
+                )
+                repeat_sum_rates[repeat_idx] += rate_value
+                user_rate_accum[rx_user] += rate_value
+                user_ber_accum[rx_user] += ber_value
+
+        user_bit_error_rates = user_ber_accum / sample_average.num_repeats
+        return ReceiverAverageEvaluation(
+            sum_rate=float(np.mean(repeat_sum_rates)),
+            sum_rate_std=float(np.std(repeat_sum_rates)),
+            bit_error_rate=float(np.mean(user_bit_error_rates)),
+            user_rates=user_rate_accum / sample_average.num_repeats,
+            user_bit_error_rates=user_bit_error_rates,
+            user_rho=user_rho,
+            leakage_matrix=leakage_matrix,
+            offdiag_to_desired=offdiag_to_desired,
+        )
+
+    def evaluate_precoder_current_receiver_average_thp(
+        self,
+        user_channels: np.ndarray,
+        f_rf: np.ndarray,
+        f_bb: np.ndarray,
+        snr_per_stream: float,
+        bits_per_symbol: int,
+        sample_average,
+        apply_modulo: bool = True,
+        labeling: str = "gray_standard",
+    ) -> ReceiverAverageEvaluation:
+        """Evaluate a generic THP precoder by rebuilding per-user QR receiver chains."""
+
+        effective_channels = self.build_effective_channels(user_channels, f_rf)
+        user_blocks = self.split_user_blocks(f_bb)
+        q_chains = []
+        r_chains = []
+        for user_idx in range(self.num_users):
+            desired_block = effective_channels[user_idx] @ user_blocks[user_idx]
+            q_local, r_local = self.qr_factors_with_positive_diagonal(desired_block)
+            q_chains.append(np.asarray(q_local, dtype=complex))
+            r_chains.append(np.asarray(r_local, dtype=complex))
+
+        return self.evaluate_precoder_current_receiver_average_fixed_chain(
+            user_channels=user_channels,
+            f_rf=f_rf,
+            f_bb=f_bb,
+            r_chains=r_chains,
+            q_chains=q_chains,
+            snr_per_stream=snr_per_stream,
+            bits_per_symbol=bits_per_symbol,
+            sample_average=sample_average,
+            apply_modulo=apply_modulo,
+            labeling=labeling,
         )
 
     def evaluate_ucd_precoder_current_receiver_average_b_chain(
