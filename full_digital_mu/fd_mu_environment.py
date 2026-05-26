@@ -107,6 +107,7 @@ class FullyDigitalMuMimoBicmEnvironment:
         snr_per_stream: float,
         bits_per_symbol: int,
         sample_average,
+        labeling: str = "gray_standard",
     ):
         """Evaluate a full-digital structured chain using design-stage P/Q/R and receive-side true diagonals."""
         return self.core.evaluate_precoder_current_receiver_average_fixed_chain(
@@ -118,6 +119,47 @@ class FullyDigitalMuMimoBicmEnvironment:
             snr_per_stream=snr_per_stream,
             bits_per_symbol=bits_per_symbol,
             sample_average=sample_average,
+            labeling=labeling,
+        )
+
+    def evaluate_precoder_current_receiver_average_parallel(
+        self,
+        user_channels: np.ndarray,
+        f: np.ndarray,
+        snr_per_stream: float,
+        bits_per_symbol: int,
+        sample_average,
+        labeling: str = "gray_standard",
+    ):
+        """Evaluate the full-digital SVD branch with parallel per-stream detection."""
+        return self.core.evaluate_precoder_current_receiver_average_parallel(
+            user_channels=np.asarray(user_channels, dtype=complex),
+            f_rf=self.identity_precoder(),
+            f_bb=np.asarray(f, dtype=complex),
+            snr_per_stream=snr_per_stream,
+            bits_per_symbol=bits_per_symbol,
+            sample_average=sample_average,
+            labeling=labeling,
+        )
+
+    def evaluate_precoder_current_receiver_average_thp(
+        self,
+        user_channels: np.ndarray,
+        f: np.ndarray,
+        snr_per_stream: float,
+        bits_per_symbol: int,
+        sample_average,
+        labeling: str = "gray_standard",
+    ):
+        """Evaluate the full-digital GMD branch with the same THP receiver path as hybrid."""
+        return self.core.evaluate_precoder_current_receiver_average_thp(
+            user_channels=np.asarray(user_channels, dtype=complex),
+            f_rf=self.identity_precoder(),
+            f_bb=np.asarray(f, dtype=complex),
+            snr_per_stream=snr_per_stream,
+            bits_per_symbol=bits_per_symbol,
+            sample_average=sample_average,
+            labeling=labeling,
         )
 
     def evaluate_ucd_precoder_current_receiver_average_b_chain(
@@ -129,6 +171,7 @@ class FullyDigitalMuMimoBicmEnvironment:
         snr_per_stream: float,
         bits_per_symbol: int,
         sample_average,
+        labeling: str = "gray_standard",
     ):
         """Evaluate the full-digital UCD runtime chain using B = W^H H P."""
         return self.core.evaluate_ucd_precoder_current_receiver_average_b_chain(
@@ -140,6 +183,7 @@ class FullyDigitalMuMimoBicmEnvironment:
             snr_per_stream=snr_per_stream,
             bits_per_symbol=bits_per_symbol,
             sample_average=sample_average,
+            labeling=labeling,
         )
 
     def build_projected_bd_precoder(

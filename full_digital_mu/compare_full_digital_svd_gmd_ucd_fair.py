@@ -54,7 +54,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=20260327)
     parser.add_argument("--ucd-waterfill", action="store_true")
     parser.add_argument("--ucd-min-power-loading", type=float, default=0.0)
-    parser.add_argument("--labeling", choices=("gray_standard", "nr_like"), default="gray_standard")
+    parser.add_argument("--labeling", choices=("gray_standard", "nr_like"), default="nr_like")
     parser.add_argument(
         "--out-dir",
         type=str,
@@ -193,23 +193,21 @@ def run_compare(env: FullyDigitalMuMimoBicmEnvironment, config: CompareConfig) -
                 strategy="ucd",
             )
 
-            svd_eval = env.evaluate_precoder_current_receiver_average_fixed_chain(
+            svd_eval = env.evaluate_precoder_current_receiver_average_parallel(
                 user_channels=user_channels,
                 f=svd_chain.f_bb,
-                r_chains=svd_chain.r_chains,
-                q_chains=svd_chain.q_chains,
                 snr_per_stream=snr_per_stream,
                 bits_per_symbol=config.bits_per_symbol,
                 sample_average=train_average,
+                labeling=config.labeling,
             )
-            gmd_eval = env.evaluate_precoder_current_receiver_average_fixed_chain(
+            gmd_eval = env.evaluate_precoder_current_receiver_average_thp(
                 user_channels=user_channels,
                 f=gmd_chain.f_bb,
-                r_chains=gmd_chain.r_chains,
-                q_chains=gmd_chain.q_chains,
                 snr_per_stream=snr_per_stream,
                 bits_per_symbol=config.bits_per_symbol,
                 sample_average=train_average,
+                labeling=config.labeling,
             )
             ucd_eval = env.evaluate_ucd_precoder_current_receiver_average_b_chain(
                 user_channels=user_channels,
@@ -219,6 +217,7 @@ def run_compare(env: FullyDigitalMuMimoBicmEnvironment, config: CompareConfig) -
                 snr_per_stream=snr_per_stream,
                 bits_per_symbol=config.bits_per_symbol,
                 sample_average=train_average,
+                labeling=config.labeling,
             )
 
             svd_sum += svd_eval.sum_rate
