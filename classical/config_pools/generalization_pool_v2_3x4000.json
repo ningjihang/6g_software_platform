@@ -10,16 +10,16 @@
   {
     "num_users": 3,
     "num_tx_antennas": 24,
-    "num_rx_antennas": 4,
-    "num_rf_chains": 12,
+    "num_rx_antennas": 6,
+    "num_rf_chains": 18,
     "num_streams_per_user": 3,
     "num_channels": 4000
   },
   {
     "num_users": 4,
-    "num_tx_antennas": 24,
-    "num_rx_antennas": 2,
-    "num_rf_chains": 12,
+    "num_tx_antennas": 32,
+    "num_rx_antennas": 4,
+    "num_rf_chains": 16,
     "num_streams_per_user": 2,
     "num_channels": 4000
   }

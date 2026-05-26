@@ -125,27 +125,6 @@ class MultiUserSimulationEnvironment:
             num_streams_per_user=self.num_streams_per_user,
         )
 
-    def build_fixed_baseline_precoder(self) -> tuple[np.ndarray, np.ndarray]:
-        """Build a channel-agnostic baseline with no SVD/GMD/BD/AO design.
-
-        The RF stage uses the first columns of a normalized DFT codebook, and
-        the digital stage simply maps the data streams onto the first RF chains.
-        This gives a full-rank, deterministic reference without any channel
-        matrix decomposition.
-        """
-
-        antenna_idx = np.arange(self.num_tx_antennas, dtype=float).reshape(-1, 1)
-        rf_idx = np.arange(self.num_rf_chains, dtype=float).reshape(1, -1)
-        f_rf = np.exp(2j * np.pi * antenna_idx * rf_idx / self.num_tx_antennas) / np.sqrt(
-            self.num_tx_antennas
-        )
-
-        f_bb = np.zeros((self.num_rf_chains, self.total_streams), dtype=complex)
-        for stream_idx in range(self.total_streams):
-            f_bb[stream_idx, stream_idx] = 1.0
-        f_bb = self.normalize_digital_precoder(f_rf=f_rf, f_bb=f_bb)
-        return f_rf, f_bb
-
     def build_effective_channels(self, user_channels: np.ndarray, f_rf: np.ndarray) -> list[np.ndarray]:
         """?????effective channels?"""
         return [user_channels[user_idx] @ f_rf for user_idx in range(self.num_users)]
@@ -178,13 +157,6 @@ class MultiUserSimulationEnvironment:
             )
         return basis
 
-    def build_bd_null_basis(self, effective_channels: list[np.ndarray], user_index: int) -> np.ndarray:
-        """Compatibility alias for older AO optimizers."""
-        return self.build_bd_digital_basis(
-            effective_channels=effective_channels,
-            user_index=user_index,
-        )
-
     def qr_factors_with_positive_diagonal(self, channel_block: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """?? qr factors with positive diagonal ???"""
         q_factor, r_factor = np.linalg.qr(channel_block, mode="reduced")
@@ -196,10 +168,6 @@ class MultiUserSimulationEnvironment:
         q_aligned = q_factor @ phase_matrix.conj().T
         r_aligned = phase_matrix @ r_factor
         return q_aligned, r_aligned
-
-    def qr_with_positive_diagonal(self, channel_block: np.ndarray) -> np.ndarray:
-        """?? qr with positive diagonal ???"""
-        return self.qr_factors_with_positive_diagonal(channel_block)[1]
 
     def normalize_digital_precoder(self, f_rf: np.ndarray, f_bb: np.ndarray) -> np.ndarray:
         """??????digital precoder?"""
@@ -326,22 +294,6 @@ class MultiUserSimulationEnvironment:
             r_chains=r_chains,
             f_rf_blocks=f_rf_blocks,
         )
-
-    def build_structured_digital_precoder(
-        self,
-        user_channels: np.ndarray,
-        f_rf: np.ndarray,
-        snr_per_stream: float,
-        strategy: str,
-    ) -> tuple[np.ndarray, list[np.ndarray], list[np.ndarray]]:
-        """Compatibility wrapper returning the legacy tuple layout."""
-        chain = self.build_structured_digital_chain(
-            user_channels=user_channels,
-            f_rf=f_rf,
-            snr_per_stream=snr_per_stream,
-            strategy=strategy,
-        )
-        return chain.f_bb, chain.q_chains, chain.r_chains
 
     def split_user_blocks(self, f_bb: np.ndarray) -> list[np.ndarray]:
         """?????user blocks?"""

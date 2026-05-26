@@ -1,0 +1,11 @@
+{
+  "always_svd_rate": 20.67392939558195,
+  "always_ucd_rate": 20.90122572617311,
+  "grid_decision_accuracy": 0.9874193548387097,
+  "num_eval_samples": 100.0,
+  "oracle_rate": 22.586383598613672,
+  "regret_to_oracle": 0.005424589783392028,
+  "selected_rate": 22.580959008830277,
+  "threshold_mae_db": 0.3783993422985077,
+  "threshold_rmse_db": 0.46392783522605896
+}

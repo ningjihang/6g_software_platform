@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        body {
+            font-family: "Times New Roman", serif;
+            font-size: 11pt;
+            line-height: 1.6;
+            text-align: justify;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 20pt;
+            text-align: center;
+            margin-top: 30pt;
+            margin-bottom: 15pt;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10pt;
+        }
+        h2 {
+            font-size: 14pt;
+            margin-top: 24pt;
+            margin-bottom: 12pt;
+            border-left: 4px solid #333;
+            padding-left: 10pt;
+        }
+        h3 {
+            font-size: 12pt;
+            margin-top: 18pt;
+            margin-bottom: 9pt;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15pt 0;
+        }
+        th, td {
+            border: 1px solid #666;
+            padding: 10pt;
+            text-align: center;
+        }
+        th {
+            background-color: #e0e0e0;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        code {
+            font-family: "Courier New", monospace;
+            background-color: #f5f5f5;
+            padding: 2pt 6pt;
+            border-radius: 3pt;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 15pt;
+            border-left: 4px solid #666;
+            overflow-x: auto;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #ccc;
+            margin: 30pt 0;
+        }
+    </style>
+</head>
+<body>
+<h1 id="comparative-analysis-of-svd-gmd-and-ucd-precoding-in-multi-user-mimo-systems">Comparative Analysis of SVD, GMD, and UCD Precoding in Multi-User MIMO Systems</h1>
+<p><strong>ningjihang</strong><br />
+<strong>2025-05-22</strong></p>
+<hr />
+<h2 id="i-introduction">I. Introduction</h2>
+<p>Multiple-input multiple-output (MIMO) technology has become a cornerstone of modern wireless communication systems, enabling significant improvements in spectral efficiency and reliability. In multi-user MIMO (MU-MIMO) systems, precoding techniques are essential for managing interference among multiple users and maximizing the overall system throughput.</p>
+<p>Among various precoding strategies, singular value decomposition (SVD), geometric mean decomposition (GMD), and uniform channel decomposition (UCD) have emerged as three prominent linear precoding methods. Each approach offers distinct advantages in terms of complexity, performance, and implementation feasibility. SVD-based precoding provides optimal point-to-point capacity but suffers from unequal signal-to-noise ratio (SNR) distribution across streams. GMD achieves uniform SNR across all streams through geometric mean decomposition, enabling simpler receivers with bit-interleaved coded modulation (BICM). UCD extends this concept by incorporating MMSE-based power loading for enhanced performance.</p>
+<p>This paper presents a comprehensive comparison of these three precoding methods in full-digital MU-MIMO systems. Through extensive simulations over CDL-A channel models, we evaluate the sum-rate performance and bit error rate (BER) characteristics of each method across a wide SNR range from 0 dB to 40 dB. Our analysis reveals that the performance gap between methods varies significantly with SNR, providing valuable insights for system design.</p>
+<h2 id="ii-system-model">II. System Model</h2>
+<p>We consider a downlink MU-MIMO system with $N_t$ transmit antennas at the base station and $K$ users, each equipped with $N_r$ receive antennas. The received signal at user $k$ can be expressed as:</p>
+<p>$$y_k = \mathbf{H}_k \mathbf{F} \mathbf{s} + n_k$$</p>
+<p>where $\mathbf{H}_k \in \mathbb{C}^{N_r \times N_t}$ represents the channel matrix for user $k$, $\mathbf{F} \in \mathbb{C}^{N_t \times N_s}$ is the precoding matrix with total transmit power constraint $\text{Tr}(\mathbf{F}\mathbf{F}^H) = P$, $\mathbf{s} \in \mathbb{C}^{N_s \times 1}$ denotes the transmitted symbol vector with $E{\mathbf{s}\mathbf{s}^H} = \mathbf{I}$, and $n_k \sim \mathcal{CN}(0, \sigma^2\mathbf{I})$ is additive white Gaussian noise.</p>
+<p>The total number of data streams is $N_s = K \times N_s^{(k)}$, where $N_s^{(k)}$ represents streams allocated to user $k$. For block diagonalization (BD) to eliminate inter-user interference, we require $N_t \geq N_s$.</p>
+<h2 id="iii-precoding-methods">III. Precoding Methods</h2>
+<h3 id="a-svd-based-precoding">A. SVD-Based Precoding</h3>
+<p>SVD precoding decomposes each user's channel as $\mathbf{H}_k = \mathbf{U}_k \mathbf{\Sigma}_k \mathbf{V}_k^H$, where $\mathbf{V}_k$ contains the right singular vectors. The precoder is constructed using the strongest singular vectors, maximizing the achievable rate. However, the resulting stream SNRs are highly non-uniform:</p>
+<p>$$\gamma_i^{(SVD)} = \frac{\sigma_i^2 P}{N_s}$$</p>
+<p>where $\sigma_i$ denotes the $i$-th singular value.</p>
+<h3 id="b-gmd-based-precoding">B. GMD-Based Precoding</h3>
+<p>GMD decomposes the channel as $\mathbf{H} = \mathbf{Q} \mathbf{R} \mathbf{P}^H$, where $\mathbf{R}$ is an upper triangular matrix with equal diagonal elements $\bar{\sigma} = (\prod_{i=1}^{N_s} \sigma_i)^{1/N_s}$. This decomposition yields uniform SNR across all streams:</p>
+<p>$$\gamma_i^{(GMD)} = \frac{\bar{\sigma}^2 P}{N_s}$$</p>
+<p>The uniform SNR property simplifies the detector design and enables efficient BICM with uniform bit interleaving.</p>
+<h3 id="c-ucd-based-precoding">C. UCD-Based Precoding</h3>
+<p>UCD extends GMD by incorporating MMSE-based power loading. The effective SNR after UCD is enhanced through interference suppression:</p>
+<p>$$\gamma_{MMSE} = \frac{\bar{\sigma}<em>{eff}^2 P}{N_s(1 + \bar{\sigma}</em>{eff}^2 P/N_s)}$$</p>
+<p>This approach provides a balance between GMD's uniformity and SVD's capacity optimization.</p>
+<h2 id="iv-simulation-results">IV. Simulation Results</h2>
+<h3 id="a-simulation-setup">A. Simulation Setup</h3>
+<p>We evaluate the three precoding methods using the following configuration:
+- Transmit antennas: $N_t = 16$
+- Receive antennas: $N_r = 4$ per user
+- Number of users: $K = 2$
+- Streams per user: $N_s^{(k)} = 4$
+- Modulation: 64-QAM (spectral efficiency: 6 bits/symbol)
+- Channel model: CDL-A with delay spread of 300 ns
+- SNR range: 0 dB to 40 dB with 2.5 dB steps</p>
+<h3 id="b-sum-rate-performance">B. Sum-Rate Performance</h3>
+<table>
+<thead>
+<tr>
+<th>SNR (dB)</th>
+<th>SVD (bps/Hz)</th>
+<th>GMD (bps/Hz)</th>
+<th>UCD (bps/Hz)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>6.60</td>
+<td>0.21</td>
+<td>0.45</td>
+</tr>
+<tr>
+<td>10</td>
+<td>22.60</td>
+<td>16.74</td>
+<td>17.71</td>
+</tr>
+<tr>
+<td>20</td>
+<td>41.96</td>
+<td>43.77</td>
+<td>43.85</td>
+</tr>
+<tr>
+<td>30</td>
+<td>47.75</td>
+<td>48.00</td>
+<td>48.00</td>
+</tr>
+<tr>
+<td>40</td>
+<td>48.00</td>
+<td>48.00</td>
+<td>48.00</td>
+</tr>
+</tbody>
+</table>
+<p>The results demonstrate that SVD outperforms GMD and UCD at low SNR (0-15 dB), where the capacity advantage of non-uniform power allocation dominates. However, as SNR increases beyond 20 dB, GMD and UCD converge to near-optimal performance with uniform stream SNR distribution.</p>
+<h3 id="c-ber-performance">C. BER Performance</h3>
+<p>The BER analysis reveals interesting trade-offs. At moderate SNR (15-25 dB), GMD and UCD achieve significantly lower BER than SVD due to their uniform stream SNR property. For example, at 20 dB SNR, SVD achieves BER of $3.87 \times 10^{-2}$, while GMD achieves $2.45 \times 10^{-2}$ and UCD achieves $2.40 \times 10^{-2}$. This approximately 1.6 dB SNR advantage makes GMD/UCD attractive for reliability-critical applications.</p>
+<h2 id="v-conclusion">V. Conclusion</h2>
+<p>This paper presented a comprehensive comparison of SVD, GMD, and UCD precoding for multi-user MIMO systems. Our simulation results over CDL-A channels demonstrate that:</p>
+<ol>
+<li>SVD-based precoding offers superior performance at low SNR due to its water-filling nature</li>
+<li>GMD and UCD achieve near-optimal performance at high SNR with uniform stream SNR</li>
+<li>The uniform SNR property of GMD/UCD provides significant BER advantages at moderate SNR</li>
+<li>The performance gap between methods diminishes at very high SNR where all methods converge to channel capacity</li>
+</ol>
+<p>These findings provide valuable guidance for selecting appropriate precoding strategies based on operating SNR range and system requirements. Future work will investigate hybrid precoding architectures that combine the advantages of these methods.</p>
+<hr />
+<p><strong>Keywords</strong>: Multi-user MIMO, Precoding, SVD, GMD, UCD, BICM, Sum-rate, BER</p>
+</body>
+</html>

@@ -754,7 +754,9 @@ class WorkflowPage(ttk.Frame):
             return None
         latest_path: Path | None = None
         latest_mtime = -1.0
-        for image_path in result_dir.glob("*.png"):
+        for image_path in result_dir.rglob("*.png"):
+            if not image_path.is_file():
+                continue
             try:
                 mtime = image_path.stat().st_mtime
             except OSError:

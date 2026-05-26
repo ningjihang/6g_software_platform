@@ -8,6 +8,12 @@ from typing import Callable
 import numpy as np
 import torch
 
+try:
+    from modular_ui.config_6g import FrequencyBand, resolve_6g_channel_profile
+except Exception:  # pragma: no cover - modular UI is optional in some contexts
+    FrequencyBand = None
+    resolve_6g_channel_profile = None
+
 _MPL_CONFIG_DIR = Path(__file__).resolve().parent / ".mplconfig"
 _MPL_CONFIG_DIR.mkdir(exist_ok=True)
 os.environ.setdefault("MPLCONFIGDIR", str(_MPL_CONFIG_DIR))
@@ -32,6 +38,72 @@ DEFAULT_CDL_A_SAMPLING_FREQUENCY = 30.72e6
 DEFAULT_TDL_DELAY_SPREAD = 30e-9
 DEFAULT_TDL_SAMPLING_FREQUENCY = 30.72e6
 DEFAULT_UMA_SAMPLING_FREQUENCY = 30.72e6
+XL_MIMO_MIN_TX_ANTENNAS = 256
+
+
+def is_xl_mimo_array(num_tx_antennas: int) -> bool:
+    return int(num_tx_antennas) >= XL_MIMO_MIN_TX_ANTENNAS
+
+
+def resolve_channel_profile(
+    *,
+    frequency_band: str | float | int | None = None,
+    carrier_frequency: float | None = None,
+    delay_spread: float | None = None,
+    sampling_frequency: float | None = None,
+) -> dict[str, float | bool | str]:
+    """
+    Resolve a frequency-dependent channel profile for Sub-6G/mmWave/Sub-THz runs.
+    """
+    if carrier_frequency is not None:
+        band_source = carrier_frequency
+    else:
+        band_source = frequency_band
+
+    if resolve_6g_channel_profile is not None:
+        profile = dict(resolve_6g_channel_profile(band_source))
+    else:
+        numeric = float(band_source) if band_source is not None else DEFAULT_CDL_A_CARRIER_FREQUENCY
+        if numeric >= 250e9:
+            profile = {
+                "band_label": "300 GHz (Sub-THz)",
+                "carrier_frequency_hz": 300e9,
+                "delay_spread_s": 2e-9,
+                "sampling_frequency_hz": 245.76e6,
+                "is_sub_thz": True,
+            }
+        elif numeric >= 100e9:
+            profile = {
+                "band_label": "140 GHz (Sub-THz)",
+                "carrier_frequency_hz": 140e9,
+                "delay_spread_s": 5e-9,
+                "sampling_frequency_hz": 122.88e6,
+                "is_sub_thz": True,
+            }
+        elif numeric >= 20e9:
+            profile = {
+                "band_label": "28 GHz (mmWave)",
+                "carrier_frequency_hz": 28e9,
+                "delay_spread_s": 15e-9,
+                "sampling_frequency_hz": 61.44e6,
+                "is_sub_thz": False,
+            }
+        else:
+            profile = {
+                "band_label": "3.5 GHz (Sub-6G)",
+                "carrier_frequency_hz": DEFAULT_CDL_A_CARRIER_FREQUENCY,
+                "delay_spread_s": DEFAULT_CDL_A_DELAY_SPREAD,
+                "sampling_frequency_hz": DEFAULT_CDL_A_SAMPLING_FREQUENCY,
+                "is_sub_thz": False,
+            }
+
+    if carrier_frequency is not None:
+        profile["carrier_frequency_hz"] = float(carrier_frequency)
+    if delay_spread is not None:
+        profile["delay_spread_s"] = float(delay_spread)
+    if sampling_frequency is not None:
+        profile["sampling_frequency_hz"] = float(sampling_frequency)
+    return profile
 
 
 def _factor_array_shape(num_antennas: int) -> tuple[int, int]:

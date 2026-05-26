@@ -1,0 +1,9 @@
+channel_index,threshold_db,crossing_type,delta_min,delta_max
+0,16.713053,single_cross,-2.7327864,7.0701986
+1,19.291161,single_cross,-4.9546906,7.7003003
+2,24.269978,single_cross,-8.1864257,10.490874
+3,18.741549,single_cross,-4.4639151,8.5437115
+4,21.706582,single_cross,-9.6094535,11.025305
+5,17.749579,single_cross,-3.3875874,8.1091091
+6,20.255306,single_cross,-3.2217463,7.0786032
+7,22.194487,single_cross,-5.1650566,8.1703889

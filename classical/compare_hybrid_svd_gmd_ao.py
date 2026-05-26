@@ -44,11 +44,7 @@ class CompareAoConfig:
     ao_final_temperature: float | None
     ao_selection_temperature: float
     ao_grad_clip_norm: float | None
-    ao_interference_penalty_weight: float
-    ao_user_fairness_penalty_weight: float
-    ao_baseline_strategies: tuple[str, ...]
     device: str
-    external_gaussian_csv: Path | None
 
 
 def parse_args() -> argparse.Namespace:
@@ -86,11 +82,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ao-final-temperature", type=float, default=None)
     parser.add_argument("--ao-selection-temperature", type=float, default=1.0)
     parser.add_argument("--ao-grad-clip-norm", type=float, default=10.0)
-    parser.add_argument("--ao-interference-penalty-weight", type=float, default=0.05)
-    parser.add_argument("--ao-user-fairness-penalty-weight", type=float, default=0.0)
-    parser.add_argument("--ao-baseline-strategies", type=str, default="svd,gmd")
     parser.add_argument("--device", type=str, default="cpu")
-    parser.add_argument("--external-gaussian-csv", type=str, default=None)
     parser.add_argument(
         "--out-dir",
         type=str,
@@ -114,18 +106,6 @@ def _format_tag_value(value: float) -> str:
     return text.replace("-", "m").replace(".", "p")
 
 
-def _safe_field_name(text: str) -> str:
-    return "".join(ch if ch.isalnum() else "_" for ch in text.lower()).strip("_")
-
-
-def _parse_strategy_tuple(text: str) -> tuple[str, ...]:
-    parts = [item.strip().lower() for item in str(text).split(",")]
-    strategies = tuple(item for item in parts if item)
-    if not strategies:
-        raise ValueError("ao_baseline_strategies must contain at least one strategy.")
-    return strategies
-
-
 def resolve_digital_power_constraint(args: argparse.Namespace) -> float:
     if args.digital_power_constraint is None:
         return float(args.num_users * args.num_streams_per_user)
@@ -135,7 +115,7 @@ def resolve_digital_power_constraint(args: argparse.Namespace) -> float:
     return resolved
 
 
-def build_output_tag(args: argparse.Namespace, baseline_strategies: tuple[str, ...]) -> str:
+def build_output_tag(args: argparse.Namespace) -> str:
     resolved_power = resolve_digital_power_constraint(args)
     return "_".join(
         [
@@ -153,7 +133,7 @@ def build_output_tag(args: argparse.Namespace, baseline_strategies: tuple[str, .
             f"Ns{args.num_streams_per_user}",
             f"{2 ** args.bits_per_symbol}QAM",
             f"功率{_format_tag_value(resolved_power)}",
-            f"初始化{'-'.join(strategy.upper() for strategy in baseline_strategies)}",
+            "init_svd_ucd",
             f"外层{args.ao_outer_iterations}",
             f"数字步{args.ao_digital_steps}",
             f"模拟步{args.ao_analog_steps}",
@@ -164,7 +144,6 @@ def build_output_tag(args: argparse.Namespace, baseline_strategies: tuple[str, .
 
 
 def build_config(args: argparse.Namespace) -> CompareAoConfig:
-    baseline_strategies = _parse_strategy_tuple(args.ao_baseline_strategies)
     return CompareAoConfig(
         mode=args.mode,
         bits_per_symbol=args.bits_per_symbol,
@@ -174,7 +153,7 @@ def build_config(args: argparse.Namespace) -> CompareAoConfig:
         train_num_repeats=args.train_num_repeats,
         base_seed=args.seed,
         out_dir=Path(args.out_dir),
-        output_tag=build_output_tag(args, baseline_strategies),
+        output_tag=build_output_tag(args),
         pilot_length=args.pilot_length if args.mode == "mmse_fullcov" else None,
         pilot_snr_db=args.pilot_snr_db if args.mode == "mmse_fullcov" else None,
         reuse_pilot_noise_across_snr=bool(args.reuse_pilot_noise_across_snr),
@@ -190,11 +169,7 @@ def build_config(args: argparse.Namespace) -> CompareAoConfig:
         ao_final_temperature=args.ao_final_temperature,
         ao_selection_temperature=args.ao_selection_temperature,
         ao_grad_clip_norm=args.ao_grad_clip_norm,
-        ao_interference_penalty_weight=args.ao_interference_penalty_weight,
-        ao_user_fairness_penalty_weight=args.ao_user_fairness_penalty_weight,
-        ao_baseline_strategies=baseline_strategies,
         device=args.device,
-        external_gaussian_csv=Path(args.external_gaussian_csv) if args.external_gaussian_csv else None,
     )
 
 
@@ -210,35 +185,8 @@ def _resolve_mmse_estimate_seed(config: CompareAoConfig, snr_index: int, chan_in
     return int(config.base_seed + snr_index * config.num_channels + chan_index)
 
 
-def _load_external_gaussian_curve(csv_path: Path | None) -> dict[float, float]:
-    if csv_path is None:
-        return {}
-    if not csv_path.exists():
-        raise FileNotFoundError(f"External Gaussian CSV not found: {csv_path}")
-
-    with csv_path.open("r", encoding="utf-8", newline="") as handle:
-        reader = csv.DictReader(handle)
-        preferred_columns = (
-            "avg_ao_gaussian",
-            "avg_gaussian_limit",
-            "avg_ao",
-        )
-        curve: dict[float, float] = {}
-        for row in reader:
-            snr_db = float(row["snr_db"])
-            value = None
-            for column in preferred_columns:
-                if column in row and row[column] not in (None, ""):
-                    value = float(row[column])
-                    break
-            if value is not None:
-                curve[snr_db] = value
-    return curve
-
-
 def run_compare(env: MultiUserSimulationEnvironment, config: CompareAoConfig) -> tuple[Path, Path, Path]:
     np.random.seed(config.base_seed)
-    external_gaussian_curve = _load_external_gaussian_curve(config.external_gaussian_csv)
 
     print(f"[Stage 1/4] Generating {config.num_channels} true channel realizations ...", flush=True)
     true_base_channels = []
@@ -299,33 +247,29 @@ def run_compare(env: MultiUserSimulationEnvironment, config: CompareAoConfig) ->
         flush=True,
     )
     print("Comparison: SVD vs GMD vs AO", flush=True)
-    print(
-        "AO init strategies: " + ", ".join(config.ao_baseline_strategies),
-        flush=True,
-    )
+    print("AO init strategies: svd, ucd", flush=True)
     print("", flush=True)
-    print(" SNR(dB) | svd | gmd | ao | gain_gmd_vs_svd | gain_ao_vs_svd | gain_ao_vs_gmd", flush=True)
-    print("--------------------------------------------------------------------------------", flush=True)
+    print(" SNR(dB) | svd | gmd | ucd | ao | gain_gmd_vs_svd | gain_ucd_vs_svd | gain_ao_vs_svd", flush=True)
+    print("--------------------------------------------------------------------------------------", flush=True)
 
     rows: list[dict[str, float]] = []
     curve_svd = []
     curve_gmd = []
     curve_ucd = []
     curve_ao = []
-    curve_external_gaussian = []
-    curve_logdet_gaussian = []
+    curve_svd_logdet = []
+    curve_gmd_logdet = []
+    curve_ucd_logdet = []
+    curve_ao_logdet = []
 
     config.out_dir.mkdir(parents=True, exist_ok=True)
     out_csv = config.out_dir / f"{config.output_tag}.csv"
     out_png = config.out_dir / f"{config.output_tag}.png"
     out_ber_png = config.out_dir / f"{config.output_tag}_ber.png"
+    out_logdet_png = config.out_dir / f"{config.output_tag}_logdet.png"
 
     print("[Stage 4/4] Running SNR sweep ...", flush=True)
     total_snr_points = len(config.snr_values_db)
-    init_field_names = {
-        strategy: f"ao_init_frac_{_safe_field_name(strategy)}"
-        for strategy in config.ao_baseline_strategies
-    }
 
     for snr_idx, snr_db in enumerate(config.snr_values_db):
         print(f"[SNR {snr_idx + 1}/{total_snr_points}] start {snr_db:.1f} dB", flush=True)
@@ -344,8 +288,11 @@ def run_compare(env: MultiUserSimulationEnvironment, config: CompareAoConfig) ->
         gmd_leakage_sum = 0.0
         ucd_leakage_sum = 0.0
         ao_leakage_sum = 0.0
-        ao_logdet_gaussian_sum = 0.0
-        init_counts = {strategy: 0 for strategy in config.ao_baseline_strategies}
+        svd_logdet_sum = 0.0
+        gmd_logdet_sum = 0.0
+        ucd_logdet_sum = 0.0
+        ao_logdet_sum = 0.0
+        init_counts = {"svd": 0, "ucd": 0}
 
         for chan_idx, true_user_channels in enumerate(true_base_channels):
             if config.mode == "perfect":
@@ -451,24 +398,40 @@ def run_compare(env: MultiUserSimulationEnvironment, config: CompareAoConfig) ->
                 final_temperature=config.ao_final_temperature,
                 selection_temperature=config.ao_selection_temperature,
                 grad_clip_norm=config.ao_grad_clip_norm,
-                interference_penalty_weight=config.ao_interference_penalty_weight,
-                user_fairness_penalty_weight=config.ao_user_fairness_penalty_weight,
                 device=config.device,
-                baseline_strategies=config.ao_baseline_strategies,
                 initial_strategy=ao_init_strategy,
                 initial_f_rf=ao_init_f_rf,
                 initial_f_bb=ao_init_f_bb,
             )
             ao_eval = ao_result.optimized_receiver_eval
-            ao_logdet_gaussian = env.evaluate_precoder_gaussian_logdet_sum_rate(
+            selected_init = ao_result.baseline_strategy
+            if selected_init in init_counts:
+                init_counts[selected_init] += 1
+
+            svd_logdet = env.evaluate_precoder_gaussian_logdet_sum_rate(
+                user_channels=true_user_channels,
+                f_rf=f_rf,
+                f_bb=svd_chain.f_bb,
+                snr_per_stream=snr_per_stream,
+            )
+            gmd_logdet = env.evaluate_precoder_gaussian_logdet_sum_rate(
+                user_channels=true_user_channels,
+                f_rf=f_rf,
+                f_bb=gmd_chain.f_bb,
+                snr_per_stream=snr_per_stream,
+            )
+            ucd_logdet = env.evaluate_precoder_gaussian_logdet_sum_rate(
+                user_channels=true_user_channels,
+                f_rf=f_rf,
+                f_bb=ucd_chain.f_bb,
+                snr_per_stream=snr_per_stream,
+            )
+            ao_logdet = env.evaluate_precoder_gaussian_logdet_sum_rate(
                 user_channels=true_user_channels,
                 f_rf=ao_result.optimized_f_rf,
                 f_bb=ao_result.optimized_f_bb,
                 snr_per_stream=snr_per_stream,
             )
-            selected_init = ao_result.selected_start_strategy or ao_result.baseline_strategy
-            if selected_init in init_counts:
-                init_counts[selected_init] += 1
 
             svd_sum += svd_eval.sum_rate
             gmd_sum += gmd_eval.sum_rate
@@ -482,7 +445,10 @@ def run_compare(env: MultiUserSimulationEnvironment, config: CompareAoConfig) ->
             gmd_leakage_sum += gmd_eval.offdiag_to_desired
             ucd_leakage_sum += ucd_eval.offdiag_to_desired
             ao_leakage_sum += ao_eval.offdiag_to_desired
-            ao_logdet_gaussian_sum += ao_logdet_gaussian
+            svd_logdet_sum += svd_logdet
+            gmd_logdet_sum += gmd_logdet
+            ucd_logdet_sum += ucd_logdet
+            ao_logdet_sum += ao_logdet
             print(f"  channel {chan_idx + 1}/{config.num_channels} done at {snr_db:.1f} dB", flush=True)
 
         avg_svd = svd_sum / config.num_channels
@@ -497,14 +463,19 @@ def run_compare(env: MultiUserSimulationEnvironment, config: CompareAoConfig) ->
         avg_gmd_leakage = gmd_leakage_sum / config.num_channels
         avg_ucd_leakage = ucd_leakage_sum / config.num_channels
         avg_ao_leakage = ao_leakage_sum / config.num_channels
-        avg_ao_logdet_gaussian = ao_logdet_gaussian_sum / config.num_channels
+        avg_svd_logdet = svd_logdet_sum / config.num_channels
+        avg_gmd_logdet = gmd_logdet_sum / config.num_channels
+        avg_ucd_logdet = ucd_logdet_sum / config.num_channels
+        avg_ao_logdet = ao_logdet_sum / config.num_channels
 
         curve_svd.append(avg_svd)
         curve_gmd.append(avg_gmd)
         curve_ucd.append(avg_ucd)
         curve_ao.append(avg_ao)
-        curve_external_gaussian.append(external_gaussian_curve.get(float(snr_db), np.nan))
-        curve_logdet_gaussian.append(avg_ao_logdet_gaussian)
+        curve_svd_logdet.append(avg_svd_logdet)
+        curve_gmd_logdet.append(avg_gmd_logdet)
+        curve_ucd_logdet.append(avg_ucd_logdet)
+        curve_ao_logdet.append(avg_ao_logdet)
 
         row = {
             "snr_db": float(snr_db),
@@ -512,6 +483,10 @@ def run_compare(env: MultiUserSimulationEnvironment, config: CompareAoConfig) ->
             "gmd": avg_gmd,
             "ucd": avg_ucd,
             "ao": avg_ao,
+            "svd_logdet": avg_svd_logdet,
+            "gmd_logdet": avg_gmd_logdet,
+            "ucd_logdet": avg_ucd_logdet,
+            "ao_logdet": avg_ao_logdet,
             "gain_gmd_vs_svd": avg_gmd - avg_svd,
             "gain_ucd_vs_svd": avg_ucd - avg_svd,
             "gain_ao_vs_svd": avg_ao - avg_svd,
@@ -524,10 +499,9 @@ def run_compare(env: MultiUserSimulationEnvironment, config: CompareAoConfig) ->
             "gmd_leakage": avg_gmd_leakage,
             "ucd_leakage": avg_ucd_leakage,
             "ao_leakage": avg_ao_leakage,
-            "ao_logdet_gaussian": avg_ao_logdet_gaussian,
+            "ao_init_frac_svd": init_counts["svd"] / max(config.num_channels, 1),
+            "ao_init_frac_ucd": init_counts["ucd"] / max(config.num_channels, 1),
         }
-        for strategy, field_name in init_field_names.items():
-            row[field_name] = init_counts[strategy] / max(config.num_channels, 1)
         rows.append(row)
 
         print(
@@ -546,24 +520,6 @@ def run_compare(env: MultiUserSimulationEnvironment, config: CompareAoConfig) ->
     plt.plot(config.snr_values_db, curve_gmd, marker="v", linewidth=2.0, label="GMD")
     plt.plot(config.snr_values_db, curve_ucd, marker="s", linewidth=2.0, label="UCD")
     plt.plot(config.snr_values_db, curve_ao, marker="o", linewidth=2.0, label="AO")
-    plt.plot(
-        config.snr_values_db,
-        curve_logdet_gaussian,
-        linestyle="--",
-        color="#aa0000",
-        linewidth=2.0,
-        label="AO LogDet Gaussian",
-    )
-    if np.any(np.isfinite(np.asarray(curve_external_gaussian, dtype=float))):
-        plt.plot(
-            config.snr_values_db,
-            curve_external_gaussian,
-            linestyle=":",
-            color="black",
-            marker="o",
-            linewidth=2.0,
-            label="AO Gaussian Info",
-        )
     plt.xlabel("SNR (dB)")
     plt.ylabel("Sum-Rate (bits/s/Hz)")
     plt.title("Hybrid SVD vs GMD vs AO")
@@ -588,9 +544,24 @@ def run_compare(env: MultiUserSimulationEnvironment, config: CompareAoConfig) ->
     plt.savefig(out_ber_png, dpi=180)
     plt.close()
 
+    plt.figure(figsize=(9.0, 5.4))
+    plt.plot(config.snr_values_db, curve_svd_logdet, marker="d", linewidth=2.0, label="SVD LogDet")
+    plt.plot(config.snr_values_db, curve_gmd_logdet, marker="v", linewidth=2.0, label="GMD LogDet")
+    plt.plot(config.snr_values_db, curve_ucd_logdet, marker="s", linewidth=2.0, label="UCD LogDet")
+    plt.plot(config.snr_values_db, curve_ao_logdet, marker="o", linewidth=2.0, label="AO LogDet")
+    plt.xlabel("SNR (dB)")
+    plt.ylabel("Gaussian LogDet Rate (bits/s/Hz)")
+    plt.title("Hybrid LogDet Comparison")
+    plt.grid(True, linestyle="--", alpha=0.35)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(out_logdet_png, dpi=180)
+    plt.close()
+
     print(f"\nSaved csv: {out_csv.resolve()}", flush=True)
     print(f"Saved plot: {out_png.resolve()}", flush=True)
     print(f"Saved BER plot: {out_ber_png.resolve()}", flush=True)
+    print(f"Saved LogDet plot: {out_logdet_png.resolve()}", flush=True)
     return out_csv.resolve(), out_png.resolve(), out_ber_png.resolve()
 
 

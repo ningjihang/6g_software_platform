@@ -7,6 +7,7 @@ import numpy as np
 try:
     from cdl_a_channel import (
         list_supported_sionna_channel_types,
+        resolve_channel_profile,
         sample_cdl_a_channels_numpy,
         sample_sionna_channels_numpy,
     )
@@ -17,6 +18,7 @@ except ModuleNotFoundError:
         sys.path.insert(0, repo_root_str)
     from cdl_a_channel import (
         list_supported_sionna_channel_types,
+        resolve_channel_profile,
         sample_cdl_a_channels_numpy,
         sample_sionna_channels_numpy,
     )
@@ -28,6 +30,9 @@ def _cached_sample_cdl_a(
     num_rx_antennas: int,
     num_tx_antennas: int,
     seed: int,
+    carrier_frequency: float,
+    delay_spread: float,
+    sampling_frequency: float,
 ) -> np.ndarray:
     """?? cached sample cdl a ???"""
     channels = sample_cdl_a_channels_numpy(
@@ -35,6 +40,9 @@ def _cached_sample_cdl_a(
         num_rx_antennas=num_rx_antennas,
         num_tx_antennas=num_tx_antennas,
         seed=seed,
+        carrier_frequency=carrier_frequency,
+        delay_spread=delay_spread,
+        sampling_frequency=sampling_frequency,
     )
     # Freeze the cached value so callers cannot accidentally mutate shared state.
     channels = np.array(channels, copy=True)
@@ -45,11 +53,27 @@ def _cached_sample_cdl_a(
 class ChannelModel:
     """Project-wide channel generator. Defaults to 3GPP CDL-A."""
 
-    def __init__(self, num_tx_antennas: int, num_rx_antennas: int, channel_type: str = "cdl-a"):
+    def __init__(
+        self,
+        num_tx_antennas: int,
+        num_rx_antennas: int,
+        channel_type: str = "cdl-a",
+        *,
+        frequency_band: str | float | int | None = None,
+        carrier_frequency: float | None = None,
+        delay_spread: float | None = None,
+        sampling_frequency: float | None = None,
+    ):
         """????????????"""
         self.num_tx_antennas = num_tx_antennas
         self.num_rx_antennas = num_rx_antennas
         self.channel_type = str(channel_type).strip().lower().replace("_", "-")
+        self.channel_profile = resolve_channel_profile(
+            frequency_band=frequency_band,
+            carrier_frequency=carrier_frequency,
+            delay_spread=delay_spread,
+            sampling_frequency=sampling_frequency,
+        )
 
     def generate_channel(self) -> np.ndarray:
         """?????channel?"""
@@ -66,6 +90,9 @@ class ChannelModel:
                 num_rx_antennas=self.num_rx_antennas,
                 num_tx_antennas=self.num_tx_antennas,
                 seed=seed,
+                carrier_frequency=float(self.channel_profile["carrier_frequency_hz"]),
+                delay_spread=float(self.channel_profile["delay_spread_s"]),
+                sampling_frequency=float(self.channel_profile["sampling_frequency_hz"]),
             )[0].copy()
 
         normalized = self.channel_type
@@ -84,6 +111,9 @@ class ChannelModel:
                 num_rx_antennas=self.num_rx_antennas,
                 num_tx_antennas=self.num_tx_antennas,
                 seed=seed,
+                carrier_frequency=float(self.channel_profile["carrier_frequency_hz"]),
+                delay_spread=float(self.channel_profile["delay_spread_s"]),
+                sampling_frequency=float(self.channel_profile["sampling_frequency_hz"]),
             )[0].copy()
 
         supported = ["cdl-a", "rayleigh", *list_supported_sionna_channel_types()]

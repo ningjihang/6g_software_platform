@@ -220,7 +220,20 @@ def _resolve_existing_path(file_name: str) -> Path | None:
         candidate = directory / file_name
         if candidate.exists():
             return candidate
+        for nested in sorted(directory.rglob(file_name)):
+            if nested.is_file():
+                return nested
     return None
+
+
+def _iter_png_files(directory: Path) -> Iterable[Path]:
+    if not directory.exists():
+        return ()
+    return (
+        path
+        for path in sorted(directory.rglob("*.png"))
+        if path.is_file()
+    )
 
 
 def _precoding_family_for_path(path: Path, precoder_text: str, num_users: str, tx: int) -> str:
@@ -448,9 +461,7 @@ def load_legacy_records(skip_files: Iterable[str] | None = None) -> list[Experim
         FULL_DIGITAL_RESULTS_DIR,
     )
     for directory in directories:
-        if not directory.exists():
-            continue
-        for image_path in sorted(directory.glob("*.png")):
+        for image_path in _iter_png_files(directory):
             if image_path.name in seen:
                 continue
             record = _record_from_legacy_file(image_path)

@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 import math
-import random
-import sys
 import tkinter as tk
 from dataclasses import dataclass, field
-from pathlib import Path
 from tkinter import ttk, messagebox
 
 import numpy as np
-from scipy.linalg import svd
+from scipy.linalg import null_space, svd
 
 try:
     import matplotlib
@@ -22,36 +19,17 @@ except ImportError:
 if __package__:
     from .channel_visualizer import ChannelAnalyzer
     from .components import (
-        BS_NODE_COLOR,
         USER_NODE_COLORS,
-        NodeComponent,
         draw_arrow_line,
         draw_grid_background,
     )
-    from ..classical.multiuser_simulation_environment import MultiUserSimulationEnvironment
-    from ..classical.sic_sample_average import build_multiuser_sample_average
 else:
     from channel_visualizer import ChannelAnalyzer
     from components import (
-        BS_NODE_COLOR,
         USER_NODE_COLORS,
-        NodeComponent,
         draw_arrow_line,
         draw_grid_background,
     )
-    ROOT_DIR = Path(__file__).resolve().parents[1]
-    if str(ROOT_DIR / "classical") not in sys.path:
-        sys.path.insert(0, str(ROOT_DIR / "classical"))
-    from multiuser_simulation_environment import MultiUserSimulationEnvironment
-    from sic_sample_average import build_multiuser_sample_average
-
-
-try:
-    from full_digital_mu import FullyDigitalMuMimoBicmEnvironment
-    FULL_DIGITAL_AVAILABLE = True
-except ImportError as e:
-    FULL_DIGITAL_AVAILABLE = False
-    print(f"Warning: Cannot import full_digital_mu: {e}")
 
 
 BG = "#0a0e14"
@@ -117,8 +95,7 @@ class SimulinkViewer(tk.Tk):
         self.params.num_tx_antennas = 16
         self.channel_analyzer = ChannelAnalyzer(self.params)
 
-        self.hybrid_env: MultiUserSimulationEnvironment | None = None
-        self.fd_env = None
+        self._runtime_mode = "lightweight"
         self._init_environments()
         self._init_channels()
         self._init_users()
@@ -159,92 +136,76 @@ class SimulinkViewer(tk.Tk):
         self.after(33, self._animate_loop)
 
     def _init_environments(self) -> None:
-        self.hybrid_env = MultiUserSimulationEnvironment(
-            num_users=self.params.num_users,
-            num_tx_antennas=self.params.num_tx_antennas,
-            num_rx_antennas=self.params.num_rx_antennas,
-            num_rf_chains=self.params.num_rf_chains,
-            num_streams_per_user=self.params.num_streams_per_user,
-            channel_type=self.params.channel_type,
-            digital_power_constraint=float(self.params.num_users * self.params.num_streams_per_user),
-        )
-        if FULL_DIGITAL_AVAILABLE:
-            self.fd_env = FullyDigitalMuMimoBicmEnvironment(
-                num_users=self.params.num_users,
-                num_tx_antennas=self.params.num_tx_antennas,
-                num_rx_antennas=self.params.num_rx_antennas,
-                num_streams_per_user=self.params.num_streams_per_user,
-                channel_type=self.params.channel_type,
-                digital_power_constraint=float(self.params.num_users * self.params.num_streams_per_user),
-            )
+        self._runtime_mode = "lightweight"
 
     def _evaluate_method_at_snr(self, method: str, snr_db: float) -> dict[str, object]:
-        if self.hybrid_env is None:
-            raise RuntimeError("Hybrid environment is not initialized.")
+        return self._evaluate_fallback_method_at_snr(method, snr_db)
 
-        bits_per_symbol = MOD_BITS.get(self.params.modulation, 4)
-        snr_linear = 10 ** (float(snr_db) / 10.0)
-        snr_per_stream = snr_linear / self.hybrid_env.total_streams
-        f_rf = self.hybrid_env.build_analog_precoder(self.channel_matrix)
-        chain = self.hybrid_env.build_structured_digital_chain(
-            user_channels=self.channel_matrix,
-            f_rf=f_rf,
-            snr_per_stream=snr_per_stream,
-            strategy=method.lower(),
-        )
-        sample_average = build_multiuser_sample_average(
-            env=self.hybrid_env,
-            bits_per_symbol=bits_per_symbol,
-            num_samples=64,
-            num_repeats=1,
-            base_seed=20260327,
-            labeling="gray_standard",
-        )
+    def _evaluate_current_chain(self) -> dict[str, object]:
+        return self._evaluate_method_at_snr(self.params.precoding_method, self.params.snr_db)
 
-        if method.upper() == "UCD":
-            evaluation = self.hybrid_env.evaluate_ucd_precoder_current_receiver_average_b_chain(
-                user_channels=self.channel_matrix,
-                f_rf=f_rf,
-                f_bb=chain.f_bb,
-                q_chains=chain.q_chains,
-                r_chains=chain.r_chains,
-                snr_per_stream=snr_per_stream,
-                bits_per_symbol=bits_per_symbol,
-                sample_average=sample_average,
-                labeling="gray_standard",
+    def _init_channels(self) -> None:
+        self.channel_matrix = (
+            np.random.randn(
+                self.params.num_users,
+                self.params.num_rx_antennas,
+                self.params.num_tx_antennas,
             )
-        else:
-            evaluation = self.hybrid_env.evaluate_precoder_current_receiver_average_fixed_chain(
-                user_channels=self.channel_matrix,
-                f_rf=f_rf,
-                f_bb=chain.f_bb,
-                r_chains=chain.r_chains,
-                q_chains=chain.q_chains,
-                snr_per_stream=snr_per_stream,
-                bits_per_symbol=bits_per_symbol,
-                sample_average=sample_average,
-                labeling="gray_standard",
+            + 1j
+            * np.random.randn(
+                self.params.num_users,
+                self.params.num_rx_antennas,
+                self.params.num_tx_antennas,
             )
+        ) / np.sqrt(2.0)
 
-        singular_values = []
-        stream_snrs_db = []
-        user_gmi = []
-        user_ber = []
-        user_sinr_db = []
+    def _evaluate_fallback_method_at_snr(self, method: str, snr_db: float) -> dict[str, object]:
+        method = method.upper()
+        num_users = max(self.params.num_users, 1)
+        num_streams = max(self.params.num_streams_per_user, 1)
+        total_snr_linear = 10 ** (float(snr_db) / 10.0)
+        user_snr_linear = total_snr_linear / num_users
+
+        singular_values: list[list[float]] = []
+        stream_snrs_db: list[list[float]] = []
+        user_gmi: list[float] = []
+        user_ber: list[float] = []
+        user_sinr_db: list[float] = []
+
         for user_idx in range(self.params.num_users):
-            n_k = chain.bd_digital_bases[user_idx]
-            h_red = chain.effective_channels[user_idx] @ n_k
-            s_eff = svd(h_red, compute_uv=False)
-            s_eff = s_eff[: self.params.num_streams_per_user]
+            h_user = np.asarray(self.channel_matrix[user_idx], dtype=complex)
+            s_eff = svd(h_user, compute_uv=False)[: self.params.num_streams_per_user]
+            if len(s_eff) < self.params.num_streams_per_user:
+                s_eff = np.pad(s_eff, (0, self.params.num_streams_per_user - len(s_eff)), constant_values=1e-12)
+
+            # Normalize preview-mode gains so displayed stream metrics stay within
+            # the configured total SNR budget instead of exceeding it due to raw
+            # random-matrix singular values.
+            singular_power = np.maximum(s_eff**2, 1e-12)
+            power_weights = singular_power / max(float(np.sum(singular_power)), 1e-12)
+            uniform_weights = np.full(num_streams, 1.0 / num_streams, dtype=float)
+
+            if method == "SVD":
+                weights = power_weights
+            elif method == "GMD":
+                weights = uniform_weights
+            else:
+                weights = 0.5 * power_weights + 0.5 * uniform_weights
+
+            rho = np.maximum(user_snr_linear * weights, 1e-12)
+
+            bits_per_symbol = MOD_BITS.get(self.params.modulation, 4)
+            gmi = float(np.sum(np.log2(1.0 + rho)))
+            gmi = min(gmi, float(num_streams * bits_per_symbol))
+            ber = float(np.mean(0.5 * np.exp(-np.maximum(rho, 1e-12) / 2.0)))
+
             singular_values.append(s_eff.tolist())
+            stream_snrs_db.append((10.0 * np.log10(np.maximum(rho, 1e-12))).tolist())
+            user_gmi.append(gmi)
+            user_ber.append(ber)
+            user_sinr_db.append(float(10.0 * np.log10(np.mean(np.maximum(rho, 1e-12)))))
 
-            rho_values = np.maximum(np.asarray(evaluation.user_rho[user_idx], dtype=float), 1e-12)
-            stream_snrs_db.append((10.0 * np.log10(rho_values)).tolist())
-            user_gmi.append(float(evaluation.user_rates[user_idx]))
-            user_ber.append(float(evaluation.user_bit_error_rates[user_idx]))
-            user_sinr_db.append(float(10.0 * np.log10(np.mean(rho_values))))
-
-        snr_per_user_db = float(snr_db - 10 * math.log10(max(self.params.num_users, 1)))
+        snr_per_user_db = float(10.0 * np.log10(max(user_snr_linear, 1e-12)))
         return {
             "snr_per_user_db": snr_per_user_db,
             "sinr_per_user_db": user_sinr_db,
@@ -252,25 +213,8 @@ class SimulinkViewer(tk.Tk):
             "singular_values": singular_values,
             "user_gmi": user_gmi,
             "user_ber": user_ber,
-            "sum_rate": float(evaluation.sum_rate),
+            "sum_rate": float(sum(user_gmi)),
         }
-
-    def _evaluate_current_chain(self) -> dict[str, object]:
-        return self._evaluate_method_at_snr(self.params.precoding_method, self.params.snr_db)
-
-    def _init_channels(self) -> None:
-        if self.hybrid_env is not None:
-            self.channel_matrix = self.hybrid_env.generate_user_channels()
-        else:
-            self.channel_matrix = np.random.randn(
-                self.params.num_users,
-                self.params.num_rx_antennas,
-                self.params.num_tx_antennas
-            ) + 1j * np.random.randn(
-                self.params.num_users,
-                self.params.num_rx_antennas,
-                self.params.num_tx_antennas
-            )
 
     def _build_style(self) -> None:
         style = ttk.Style(self)
@@ -480,7 +424,13 @@ class SimulinkViewer(tk.Tk):
             rate_label = tk.Label(info_frame, text=f"Rate: {user.gmi:.2f} bits/symbol", fg="#00e676", bg="#223044", font=("Segoe UI", 14, "bold"))
             rate_label.pack(anchor="w", pady=(6, 4))
             
-            tk.Label(info_frame, text=f"SNR: {user.snr_db:.1f} dB  |  SINR: {user.sinr_db:.1f} dB", fg="#7dd3fc", bg="#223044", font=("Segoe UI", 9)).pack(anchor="w")
+            tk.Label(
+                info_frame,
+                text=f"User SNR Budget: {user.snr_db:.1f} dB  |  Avg Stream SINR: {user.sinr_db:.1f} dB",
+                fg="#7dd3fc",
+                bg="#223044",
+                font=("Segoe UI", 9),
+            ).pack(anchor="w")
             
             stream_text = "Streams: " + ", ".join([f"{s:.1f} dB" for s in user.stream_snrs_db])
             tk.Label(info_frame, text=stream_text, fg="#b9cbe0", bg="#223044", font=("Segoe UI", 8)).pack(anchor="w", pady=(4, 0))
@@ -489,6 +439,8 @@ class SimulinkViewer(tk.Tk):
 
 
     def _build_decomp_panel(self, parent: ttk.Frame) -> None:
+        self._build_info_panel(parent)
+        return
         decomp_frame = ttk.LabelFrame(parent, text=f"{self.params.precoding_method} Decomposition", padding=10)
         decomp_frame.pack(fill="both", expand=True)
         
@@ -514,6 +466,8 @@ class SimulinkViewer(tk.Tk):
         self.after(100, lambda: self.decomp_canvas.configure(scrollregion=self.decomp_canvas.bbox("all")))
 
     def _build_all_decomp_rows(self) -> None:
+        self._build_all_info_rows()
+        return
         for widget in self.decomp_scrollable.winfo_children():
             widget.destroy()
         
@@ -554,6 +508,8 @@ class SimulinkViewer(tk.Tk):
             tk.Label(stream_frame, text=stream_text, fg="#8b949e", bg="#151c25", font=("Segoe UI", 8)).pack(anchor="w")
 
     def _build_system_info(self, parent: ttk.Frame) -> None:
+        self._build_info_panel(parent)
+        return
         info_frame = ttk.LabelFrame(parent, text="System Info", padding=10)
         info_frame.pack(fill="both", expand=True)
         
@@ -563,9 +519,7 @@ class SimulinkViewer(tk.Tk):
         ttk.Label(info_frame, text=f"RF Chains: {self.params.num_rf_chains}", style="Status.TLabel").pack(anchor="w")
         ttk.Label(info_frame, text=f"Modulation: {self.params.modulation} ({MOD_BITS.get(self.params.modulation, 4)} bits/symbol)", style="Status.TLabel").pack(anchor="w")
         
-        snr_total = self.params.tx_power_dbm - (-70)
-        ttk.Label(info_frame, text=f"Tx Power: {self.params.tx_power_dbm:.1f} dBm | Noise: -70 dBm", foreground="#ff9f43", font=("Segoe UI", 9)).pack(anchor="w")
-        ttk.Label(info_frame, text=f"System SNR: {snr_total:.1f} dB", foreground=ACCENT, font=("Segoe UI", 10, "bold")).pack(anchor="w")
+        ttk.Label(info_frame, text=f"System SNR: {self.params.snr_db:.1f} dB", foreground=ACCENT, font=("Segoe UI", 10, "bold")).pack(anchor="w")
         
         if FULL_DIGITAL_AVAILABLE:
             ttk.Label(info_frame, text="✓ Using full_digital_mu", foreground="#34d399", font=("Segoe UI", 9)).pack(anchor="w")
@@ -659,6 +613,17 @@ class SimulinkViewer(tk.Tk):
             justify="left",
             wraplength=300,
         ).pack(anchor="w", pady=(6, 0))
+        runtime_text = "Runtime: lightweight numpy mode"
+        runtime_color = "#34d399"
+        tk.Label(
+            summary_frame,
+            text=runtime_text,
+            fg=runtime_color,
+            bg="#151c25",
+            font=("Segoe UI", 9),
+            justify="left",
+            wraplength=300,
+        ).pack(anchor="w", pady=(4, 0))
 
         for user in self.user_states:
             user_frame = tk.Frame(
@@ -946,7 +911,13 @@ class SimulinkViewer(tk.Tk):
         self.canvas.create_text(user.x, user.y + size / 2 + 14, text=f"User {user.id}", fill=TEXT, font=("Segoe UI", 14, "bold"))
         rate_text = f"Rate: {user.gmi:.2f} bits/symbol"
         self.canvas.create_text(user.x, user.y + size / 2 + 32, text=rate_text, fill="#00e676", font=("Segoe UI", 12, "bold"))
-        self.canvas.create_text(user.x, user.y + size / 2 + 48, text=f"SNR: {user.snr_db:.1f} dB", fill="#5bb6ff", font=("Segoe UI", 10))
+        self.canvas.create_text(
+            user.x,
+            user.y + size / 2 + 48,
+            text=f"Avg Stream SINR: {user.sinr_db:.1f} dB",
+            fill="#5bb6ff",
+            font=("Segoe UI", 10),
+        )
 
     def _draw_channel_link(self, user: UserState, bs_x: int) -> None:
         bs_y = 60

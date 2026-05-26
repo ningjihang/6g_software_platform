@@ -70,6 +70,16 @@ FULL_DIGITAL_IMAGE_PATTERN = re.compile(
 )
 
 
+def _iter_result_pngs(directory: Path):
+    if not directory.exists():
+        return ()
+    return (
+        path
+        for path in sorted(directory.rglob("*.png"))
+        if path.is_file()
+    )
+
+
 @dataclass(frozen=True)
 class PhotoEntry:
     user_scope: str
@@ -381,7 +391,7 @@ class LauncherGuiApp:
             return []
 
         entries: list[PhotoEntry] = []
-        for image_path in sorted(FULL_DIGITAL_RESULTS_DIR.glob("*.png")):
+        for image_path in _iter_result_pngs(FULL_DIGITAL_RESULTS_DIR):
             match = FULL_DIGITAL_IMAGE_PATTERN.match(image_path.name)
             if match is None:
                 continue

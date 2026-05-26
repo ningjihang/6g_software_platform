@@ -1,0 +1,11 @@
+channel_index,threshold_true_db,threshold_pred_db,split
+0,3.33092,4.6684718,train
+1,5.4974194,5.8315234,train
+2,8,6.4147668,test
+3,4.0691638,5.2005382,train
+4,8,6.2709727,train
+5,8,6.0682025,train
+6,-2,5.721879,test
+7,8,6.5662937,train
+8,5.0337915,5.8338137,train
+9,8,6.0656271,val
