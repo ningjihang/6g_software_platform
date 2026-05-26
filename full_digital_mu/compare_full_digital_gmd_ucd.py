@@ -1,14 +1,24 @@
 from __future__ import annotations
 
-from compare_full_digital_svd_gmd_ucd_fair import (
-    CompareConfig,
-    build_config,
-    parse_args,
-    run_compare as _run_compare_all,
-)
-from fd_mu_environment import FullyDigitalMuMimoBicmEnvironment
 import csv
 from pathlib import Path
+
+try:
+    from compare_full_digital_svd_gmd_ucd_fair import (
+        CompareConfig,
+        build_config,
+        parse_args,
+        run_compare as _run_compare_all,
+    )
+    from fd_mu_environment import FullyDigitalMuMimoBicmEnvironment
+except ModuleNotFoundError:
+    from .compare_full_digital_svd_gmd_ucd_fair import (
+        CompareConfig,
+        build_config,
+        parse_args,
+        run_compare as _run_compare_all,
+    )
+    from .fd_mu_environment import FullyDigitalMuMimoBicmEnvironment
 
 
 def run_compare(env: FullyDigitalMuMimoBicmEnvironment, config: CompareConfig):

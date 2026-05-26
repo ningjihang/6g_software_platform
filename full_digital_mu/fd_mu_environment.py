@@ -3,13 +3,9 @@ from __future__ import annotations
 import numpy as np
 
 try:
-    from _bootstrap import ensure_classical_on_path
+    from multiuser_simulation_environment import MultiUserSimulationEnvironment
 except ModuleNotFoundError:
-    from ._bootstrap import ensure_classical_on_path
-
-ensure_classical_on_path()
-
-from multiuser_simulation_environment import MultiUserSimulationEnvironment
+    from .multiuser_simulation_environment import MultiUserSimulationEnvironment
 
 
 class FullyDigitalMuMimoBicmEnvironment:

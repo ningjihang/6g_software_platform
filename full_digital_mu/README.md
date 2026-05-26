@@ -18,5 +18,6 @@ Notes:
 
 - Old UCD-only and multi-baseline comparison code paths are no longer part of
   the active workflow.
-- The implementation reuses the existing channel model, BD helpers, and
-  receiver-side Monte Carlo GMI evaluation from `classical/`.
+- The implementation is self-contained inside `full_digital_mu/`, including
+  channel generation, BD helpers, `svd/gmd/ucd` structured design, and
+  receiver-side Monte Carlo GMI/BER evaluation.
