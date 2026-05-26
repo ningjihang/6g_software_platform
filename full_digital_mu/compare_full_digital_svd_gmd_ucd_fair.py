@@ -12,11 +12,9 @@ import numpy as np
 os.environ.setdefault("MPLCONFIGDIR", str(Path(__file__).resolve().parents[1] / ".mplconfig"))
 
 try:
-    from bicm_metrics import get_constellation
     from fd_mu_environment import FullyDigitalMuMimoBicmEnvironment
     from sic_sample_average import build_multiuser_sample_average
 except ModuleNotFoundError:
-    from .bicm_metrics import get_constellation
     from .fd_mu_environment import FullyDigitalMuMimoBicmEnvironment
     from .sic_sample_average import build_multiuser_sample_average
 @dataclass(frozen=True)
